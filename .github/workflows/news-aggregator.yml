@@ -1,0 +1,89 @@
+name: Israeli News Aggregator
+
+on:
+  schedule:
+    # Run every 4 hours during business hours Israel time (UTC+3)
+    # 6:00, 10:00, 14:00, 18:00, 22:00 Israel time = 3:00, 7:00, 11:00, 15:00, 19:00 UTC
+    - cron: '0 3,7,11,15,19 * * *'
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: 'Hours to look back for articles'
+        required: false
+        default: '4'
+        type: string
+      enable_ai_analysis:
+        description: 'Enable AI analysis'
+        required: false
+        default: true
+        type: boolean
+      send_to_slack:
+        description: 'Send to Slack'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  aggregate-news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Test integrations (optional)
+      id: test-integrations
+      continue-on-error: true
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        python run.py --test-integrations
+    
+    - name: Run news aggregation
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        # Set parameters based on trigger
+        HOURS="${{ github.event.inputs.hours || '4' }}"
+        
+        # Build command
+        CMD="python run.py --hours $HOURS"
+        
+        # Add AI analysis if enabled and API key is available
+        if [[ "${{ github.event.inputs.enable_ai_analysis || 'true' }}" == "true" ]] && [[ -n "$OPENAI_API_KEY" ]]; then
+          CMD="$CMD --ai-analysis"
+        fi
+        
+        # Add Slack notification if enabled and webhook is available
+        if [[ "${{ github.event.inputs.send_to_slack || 'true' }}" == "true" ]] && [[ -n "$SLACK_WEBHOOK_URL" ]]; then
+          CMD="$CMD --slack"
+        fi
+        
+        echo "Running: $CMD"
+        $CMD
+    
+    - name: Send error alert to Slack on failure
+      if: failure() && env.SLACK_WEBHOOK_URL
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"🚨 Israeli News Aggregator workflow failed!\n\nWorkflow: '"$GITHUB_WORKFLOW"'\nRun: '"$GITHUB_SERVER_URL"'/'"$GITHUB_REPOSITORY"'/actions/runs/'"$GITHUB_RUN_ID"'","username":"GitHub Actions","icon_emoji":":warning:"}' \
+          $SLACK_WEBHOOK_URL
