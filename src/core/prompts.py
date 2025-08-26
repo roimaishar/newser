@@ -118,50 +118,8 @@ class NewsAnalysisPrompts:
             bulletins_he=_k("bulletins_he", "עדכונים_לתצוגה"),
         )
 
-    # ---------- Sentiment ----------  
-    SENTIMENT_ANALYSIS_PROMPT = """נתח/י סנטימנט של הכותרות הבאות (עברית בתוצאה):
 
-{articles_text}
 
-החזר/י JSON:
-{{
-    "overall_sentiment": "חיובי/שלילי/ניטרלי",
-    "sentiment_breakdown": {{
-        "חיובי": 0,
-        "שלילי": 0,
-        "ניטרלי": 0
-    }},
-    "reasoning": "הסבר קצר בעברית להערכת הסנטימנט"
-}}"""
-
-    # ---------- Topic Extraction ----------
-    TOPIC_EXTRACTION_PROMPT = """חלץ/י וקטלג/י את הנושאים המרכזיים מהכותרות הבאות (עברית בתוצאה):
-
-{articles_text}
-
-החזר/י JSON:
-{{
-    "primary_topics": ["נושא 1", "נושא 2", "נושא 3"],
-    "categories": {{
-        "פוליטיקה": ["כותרת 1", "כותרת 2"],
-        "ביטחון": ["כותרת 1"],
-        "כלכלה": ["כותרת 1"],
-        "חברה": ["כותרת 1"]
-    }}
-}}"""
-
-    # ---------- Breaking News ----------
-    BREAKING_NEWS_ALERT_PROMPT = """זהה/י האם אחת מהכותרות היא חדשות מתפרצות או בעלות דחיפות:
-
-{articles_text}
-
-החזר/י JSON:
-{{
-    "has_breaking_news": true/false,
-    "breaking_headlines": ["כותרת דחופה 1", "כותרת דחופה 2"],
-    "urgency_level": "נמוכה/בינונית/גבוהה",
-    "alert_summary": "סיכום קצר בעברית אם זוהתה דחיפות"
-}}"""
 
     # ---------- Builders ----------
 
@@ -240,26 +198,9 @@ class NewsAnalysisPrompts:
             known_items_text=known_items_text,
         )
 
-    @classmethod
-    def get_sentiment_prompt(cls, articles: List[Dict[str, Any]]) -> str:
-        articles_text = cls._format_articles_for_prompt(articles, limit=15)
-        return cls.SENTIMENT_ANALYSIS_PROMPT.format(articles_text=articles_text)
-
-    @classmethod
-    def get_topic_extraction_prompt(cls, articles: List[Dict[str, Any]]) -> str:
-        articles_text = cls._format_articles_for_prompt(articles, limit=15)
-        return cls.TOPIC_EXTRACTION_PROMPT.format(articles_text=articles_text)
-
-    @classmethod
-    def get_breaking_news_prompt(cls, articles: List[Dict[str, Any]]) -> str:
-        articles_text = cls._format_articles_for_prompt(articles, limit=10)
-        return cls.BREAKING_NEWS_ALERT_PROMPT.format(articles_text=articles_text)
 
 
-# Convenience aliases (backward compatibility)
+# Convenience aliases
 SYSTEM_PROMPT = NewsAnalysisPrompts.SYSTEM_PROMPT
 get_analysis_prompt = NewsAnalysisPrompts.get_analysis_prompt
 get_update_prompt = NewsAnalysisPrompts.get_update_prompt
-get_sentiment_prompt = NewsAnalysisPrompts.get_sentiment_prompt
-get_topic_extraction_prompt = NewsAnalysisPrompts.get_topic_extraction_prompt
-get_breaking_news_prompt = NewsAnalysisPrompts.get_breaking_news_prompt

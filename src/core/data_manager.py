@@ -183,7 +183,7 @@ class DataManager:
         
         try:
             with open(temp_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+                json.dump(data, f, ensure_ascii=False, indent=2, default=str)
             
             # Atomic move
             temp_path.replace(file_path)

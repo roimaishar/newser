@@ -2,14 +2,16 @@
 """
 Smart CLI Router for the News Aggregator.
 
-Provides backward compatibility with run.py while enabling new modular endpoints.
-Supports both legacy commands and new smart command architecture.
+Modern modular command architecture for news aggregation.
 """
 
 import argparse
 import logging
 import sys
 from typing import Optional, List
+
+# Load environment variables first
+import core.env_loader  # Auto-loads .env file
 
 from commands import get_command, list_commands, COMMANDS
 
@@ -18,14 +20,11 @@ logger = logging.getLogger(__name__)
 
 class CLIRouter:
     """
-    Smart router that handles both legacy and new command structures.
+    Modern CLI router for news aggregation commands.
     
-    Legacy support:
-    - python run.py --hours 6 --verbose
-    - Maps to: news fetch --hours 6 --verbose
-    
-    New structure:
+    Command structure:
     - python run.py news fetch --hours 6 --verbose  
+    - python run.py news analyze --hours 6 --slack
     - python run.py state stats
     - python run.py data cleanup --days 30
     """
@@ -55,8 +54,6 @@ class CLIRouter:
         self._add_data_parser(subparsers)
         self._add_integrations_parser(subparsers)
         
-        # Add legacy arguments for backward compatibility
-        self._add_legacy_arguments(parser)
         
         return parser
     
@@ -181,18 +178,6 @@ class CLIRouter:
         # Status subcommand
         status_parser = integrations_subparsers.add_parser('status', help='Show integration status')
     
-    def _add_legacy_arguments(self, parser):
-        """Add legacy arguments for backward compatibility."""
-        # Legacy arguments that map to news fetch/analyze
-        parser.add_argument('--hours', type=int, help='Hours to look back (legacy: maps to news fetch/analyze)')
-        parser.add_argument('--similarity', type=float, help='Similarity threshold (legacy: maps to news fetch/analyze)')
-        parser.add_argument('--no-dedupe', action='store_true', help='Skip deduplication (legacy: maps to news fetch/analyze)')
-        parser.add_argument('--verbose', action='store_true', help='Verbose output (legacy: maps to news fetch/analyze)')
-        parser.add_argument('--hebrew', action='store_true', help='Enable Hebrew analysis (legacy: maps to news analyze)')
-        parser.add_argument('--updates-only', action='store_true', help='Updates only mode (legacy: maps to news analyze)')
-        parser.add_argument('--slack', action='store_true', help='Send to Slack (legacy: maps to news analyze)')
-        parser.add_argument('--state-file', help='State file path (legacy)')
-        parser.add_argument('--state-stats', action='store_true', help='Show state stats (legacy: maps to state stats)')
     
     def _get_examples_text(self) -> str:
         """Get examples text for help."""
@@ -205,10 +190,6 @@ Examples:
   python run.py data cleanup --days 30
   python run.py integrations test
   
-  # Legacy support (backward compatible)
-  python run.py --hours 6 --verbose              # → news fetch
-  python run.py --hours 24 --hebrew --slack      # → news analyze
-  python run.py --state-stats                    # → state stats
 """
     
     def route_command(self, args: Optional[List[str]] = None) -> int:
@@ -227,12 +208,12 @@ Examples:
             
             parsed_args = self.parser.parse_args(args)
             
-            # Handle legacy command detection
+            # Handle command structure
             if not parsed_args.command:
-                return self._handle_legacy_command(parsed_args)
-            
-            # Handle new command structure
-            return self._handle_new_command(parsed_args)
+                self.parser.print_help()
+                return 1
+                
+            return self._handle_command(parsed_args)
             
         except SystemExit as e:
             # argparse calls sys.exit() on error or help
@@ -241,35 +222,10 @@ Examples:
             logger.error(f"CLI routing error: {e}", exc_info=True)
             return 1
     
-    def _handle_legacy_command(self, args: argparse.Namespace) -> int:
-        """Handle legacy command format."""
-        logger.debug("Handling legacy command format")
-        
-        # Special case: --state-stats maps to state stats
-        if getattr(args, 'state_stats', False):
-            logger.info("Legacy: --state-stats → state stats")
-            # Ensure state_file has a default value
-            if not hasattr(args, 'state_file') or args.state_file is None:
-                args.state_file = 'data/known_items.json'
-            command = get_command('state')
-            return command.execute('stats', args)
-        
-        # Default legacy behavior: fetch or analyze based on --hebrew flag
-        if getattr(args, 'hebrew', False):
-            logger.info("Legacy: --hebrew → news analyze")
-            command = get_command('news')
-            return command.execute('analyze', args)
-        else:
-            logger.info("Legacy: default → news fetch")
-            # Set default hours if not provided
-            if not hasattr(args, 'hours') or args.hours is None:
-                args.hours = 24
-            command = get_command('news')
-            return command.execute('fetch', args)
     
-    def _handle_new_command(self, args: argparse.Namespace) -> int:
-        """Handle new command structure."""
-        logger.debug(f"Handling new command: {args.command}")
+    def _handle_command(self, args: argparse.Namespace) -> int:
+        """Handle command structure."""
+        logger.debug(f"Handling command: {args.command}")
         
         if args.command not in COMMANDS:
             available = ', '.join(COMMANDS.keys())

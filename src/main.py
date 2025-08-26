@@ -115,8 +115,6 @@ def main():
                        help='Skip deduplication step')
     parser.add_argument('--similarity', type=float, default=0.8,
                        help='Similarity threshold for deduplication (0-1, default: 0.8)')
-    parser.add_argument('--ai-analysis', action='store_true',
-                       help='Enable AI analysis of articles (requires OPENAI_API_KEY)')
     parser.add_argument('--slack', action='store_true',
                        help='Send results to Slack (requires SLACK_WEBHOOK_URL)')
     parser.add_argument('--test-integrations', action='store_true',
@@ -237,9 +235,8 @@ def main():
             articles = deduplicator.deduplicate(articles)
             logger.info(f"After deduplication: {len(articles)} articles")
         
-        # Hebrew Analysis (replaces regular AI analysis)
+        # Hebrew Analysis
         hebrew_result = None
-        analysis = None  # Legacy analysis for compatibility
         
         if args.hebrew and hebrew_analyzer:
             try:
@@ -257,16 +254,6 @@ def main():
             except Exception as e:
                 logger.error(f"Hebrew analysis failed: {e}")
         
-        # Legacy AI Analysis if requested (English mode)
-        elif args.ai_analysis:
-            try:
-                logger.info("Running legacy AI analysis...")
-                openai_client = OpenAIClient()
-                article_dicts = articles_to_dict(articles)
-                analysis = openai_client.analyze_headlines(article_dicts)
-                logger.info("Legacy AI analysis completed")
-            except Exception as e:
-                logger.error(f"AI analysis failed: {e}")
         
         # Send to Slack if requested
         if args.slack:
@@ -276,15 +263,8 @@ def main():
                 article_dicts = articles_to_dict(articles)
                 
                 analysis_dict = None
-                if analysis:
-                    analysis_dict = {
-                        'summary': analysis.summary,
-                        'key_topics': analysis.key_topics,
-                        'sentiment': analysis.sentiment,
-                        'insights': analysis.insights
-                    }
                 
-                # Send with Hebrew result if available
+                # Send with Hebrew result
                 success = slack_client.send_news_summary(
                     article_dicts, 
                     analysis_dict, 
@@ -320,23 +300,11 @@ def main():
                 else:
                     print("לא נמצאו כתבות בטווח הזמן המבוקש")
         
-        else:
-            # Legacy English mode output
+        elif not args.hebrew:
+            # Basic output mode (no Hebrew analysis)
             print(f"\n=== Israeli News Headlines - Last {args.hours} Hours ===")
             print(f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             print(f"Total articles: {len(articles)}\n")
-            
-            # Show legacy AI analysis if available
-            if analysis:
-                print(f"\n=== AI ANALYSIS ===")
-                print(f"Summary: {analysis.summary}")
-                print(f"Key Topics: {', '.join(analysis.key_topics)}")
-                print(f"Sentiment: {analysis.sentiment}")
-                if analysis.insights:
-                    print("Key Insights:")
-                    for insight in analysis.insights:
-                        print(f"  • {insight}")
-                print()
             
             if articles:
                 for article in articles:

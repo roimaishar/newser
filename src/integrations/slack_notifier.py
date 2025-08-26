@@ -64,7 +64,7 @@ class SlackNotifier:
         
         Args:
             articles: List of news articles
-            analysis: Optional AI analysis results (legacy English)
+            analysis: Optional (unused, kept for compatibility)
             hebrew_result: Optional Hebrew analysis result
             
         Returns:
@@ -141,28 +141,6 @@ class SlackNotifier:
                     }
                 }
                 blocks.append(bulletins_block)
-                
-        elif analysis:
-            # Legacy English analysis
-            analysis_block = {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*🤖 AI Analysis*\n{analysis.get('summary', 'Analysis completed')}"
-                }
-            }
-            blocks.append(analysis_block)
-            
-            if analysis.get('key_topics'):
-                topics_text = ", ".join(analysis['key_topics'])
-                topics_block = {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"*📊 Key Topics:* {topics_text}"
-                    }
-                }
-                blocks.append(topics_block)
         
         # Add divider
         blocks.append({"type": "divider"})
