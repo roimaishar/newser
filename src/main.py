@@ -125,8 +125,9 @@ def main():
                        help='Enable Hebrew-first analysis with novelty detection')
     parser.add_argument('--updates-only', action='store_true',
                        help='Show only new/updated items (requires --hebrew)')
-    parser.add_argument('--state-file', type=str, default='data/known_items.json',
-                       help='Path to state file for known events (default: data/known_items.json)')
+    # Legacy argument for backward compatibility (now uses database)
+    parser.add_argument('--state-file', type=str, default=None,
+                       help='[DEPRECATED] State now stored in database')
     parser.add_argument('--reset-state', action='store_true',
                        help='Reset known events state (requires --hebrew)')
     parser.add_argument('--state-stats', action='store_true',

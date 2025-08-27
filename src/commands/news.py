@@ -15,6 +15,7 @@ from core.security import SecurityValidator
 from core.state_manager import StateManager
 from core.hebrew_analyzer import HebrewNewsAnalyzer
 from core.data_manager import RunRecord, AnalysisRecord, DataManager
+from core.database import get_database
 from integrations.openai_client import OpenAIClient
 from integrations.slack_notifier import SlackNotifier
 
@@ -88,15 +89,22 @@ class NewsCommand(BaseCommand):
             else:
                 self.metrics.record_stat("articles_after_dedup", len(articles))
             
-            # Store run record
+            # Store articles in database
+            db = get_database()
+            stored_count = db.store_articles(articles)
+            logger.info(f"Stored {stored_count} new articles in database")
+            
+            # Store run record with metrics
+            processing_time = self.metrics.get_total_time() if hasattr(self.metrics, 'get_total_time') else 0
             run_record = RunRecord(
                 run_id=run_id,
                 timestamp=datetime.fromtimestamp(self.metrics._run_start_time),
                 hours_window=args.hours,
                 command_used=f"news fetch --hours {args.hours}",
-                raw_articles=[article.to_dict() for article in articles],
+                articles_scraped=self.metrics._run_stats.get('articles_scraped', len(articles)),
                 after_dedup=len(articles),
-                success=True
+                success=True,
+                processing_time=processing_time
             )
             self.data_manager.store_run_record(run_record)
             
@@ -127,16 +135,18 @@ class NewsCommand(BaseCommand):
             # First fetch articles (reuse fetch logic)
             articles = self._fetch_and_process_articles(args)
             
+            # Store articles in database
+            db = get_database()
+            stored_count = db.store_articles(articles)
+            logger.info(f"Stored {stored_count} new articles in database")
+            
             if not articles:
                 print("No articles found for analysis.")
                 self.metrics.end_run(success=True)
                 return 0
             
-            # Initialize Hebrew analyzer
-            state_file = getattr(args, 'state_file', 'data/known_items.json')
-            if state_file is None:
-                state_file = 'data/known_items.json'
-            state_manager = StateManager(state_file=state_file)
+            # Initialize Hebrew analyzer with database state manager
+            state_manager = StateManager()
             
             with self.metrics.time_operation("hebrew_analysis"):
                 try:
@@ -177,20 +187,35 @@ class NewsCommand(BaseCommand):
                         self.logger.error(f"Slack notification failed: {e}")
                         self.metrics.record_stat("slack_sent", False)
             
-            # Store analysis record
+            # Store analysis record and final run metrics
             if hebrew_result:
+                processing_time = sum(getattr(op, 'duration', 0) for op in getattr(self.metrics, '_current_operations', []) 
+                                    if "analysis" in getattr(op, 'operation', ''))
+                
                 analysis_record = AnalysisRecord(
                     run_id=run_id,
                     timestamp=hebrew_result.analysis_timestamp,
                     analysis_type=hebrew_result.analysis_type,
-                    hebrew_result=hebrew_result.__dict__,
-                    slack_payload=None,  # Could store full slack payload if needed
+                    hebrew_result=hebrew_result,
                     articles_analyzed=hebrew_result.articles_analyzed,
                     confidence=hebrew_result.confidence,
-                    processing_time=sum(op.duration for op in self.metrics._current_operations 
-                                       if "analysis" in op.operation)
+                    processing_time=processing_time
                 )
                 self.data_manager.store_analysis_record(analysis_record)
+            
+            # Store final run record with complete metrics
+            total_time = self.metrics.get_total_time() if hasattr(self.metrics, 'get_total_time') else 0
+            run_record = RunRecord(
+                run_id=run_id,
+                timestamp=datetime.fromtimestamp(self.metrics._run_start_time),
+                hours_window=args.hours,
+                command_used=command_str,
+                articles_scraped=self.metrics._run_stats.get('articles_scraped', len(articles)),
+                after_dedup=len(articles),
+                success=True,
+                processing_time=total_time
+            )
+            self.data_manager.store_run_record(run_record)
             
             # Display results
             self._display_hebrew_analysis(articles, hebrew_result, args)
@@ -265,6 +290,7 @@ class NewsCommand(BaseCommand):
                     self.logger.warning(f"Blocked article with invalid URL: {article.link}")
             
             articles = secure_articles
+            self.logger.info(f"After security validation: {len(articles)} articles")
         
         # Deduplication
         if not getattr(args, 'no_dedupe', False):
@@ -275,6 +301,7 @@ class NewsCommand(BaseCommand):
                 deduplicator = Deduplicator(similarity_threshold=similarity)
                 articles = deduplicator.deduplicate(articles)
                 self.metrics.record_stat("articles_after_dedup", len(articles))
+                self.logger.info(f"After deduplication: {len(articles)} articles")
         else:
             self.metrics.record_stat("articles_after_dedup", len(articles))
         

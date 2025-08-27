@@ -53,6 +53,7 @@ class CLIRouter:
         self._add_state_parser(subparsers)
         self._add_data_parser(subparsers)
         self._add_integrations_parser(subparsers)
+        self._add_health_parser(subparsers)
         
         
         return parser
@@ -84,7 +85,7 @@ class CLIRouter:
         analyze_parser.add_argument('--no-dedupe', action='store_true', help='Skip deduplication')
         analyze_parser.add_argument('--updates-only', action='store_true', help='Show only new/updated content')
         analyze_parser.add_argument('--slack', action='store_true', help='Send results to Slack')
-        analyze_parser.add_argument('--state-file', default='data/known_items.json', help='State file path')
+        analyze_parser.add_argument('--state-file', default=None, help='[DEPRECATED] State now stored in database')
         analyze_parser.add_argument('--verbose', action='store_true', help='Verbose output')
         
         # Summary subcommand
@@ -106,17 +107,17 @@ class CLIRouter:
         
         # Stats subcommand
         stats_parser = state_subparsers.add_parser('stats', help='Show state statistics')
-        stats_parser.add_argument('--state-file', default='data/known_items.json', help='State file path')
+        stats_parser.add_argument('--state-file', default=None, help='[DEPRECATED] State now stored in database')
         
         # Cleanup subcommand
         cleanup_parser = state_subparsers.add_parser('cleanup', help='Clean up old events')
         cleanup_parser.add_argument('--days', type=int, default=30, help='Remove events older than N days (default: 30)')
-        cleanup_parser.add_argument('--state-file', default='data/known_items.json', help='State file path')
+        cleanup_parser.add_argument('--state-file', default=None, help='[DEPRECATED] State now stored in database')
         
         # Reset subcommand
         reset_parser = state_subparsers.add_parser('reset', help='Reset state (clear all known events)')
         reset_parser.add_argument('--force', action='store_true', help='Skip confirmation prompt')
-        reset_parser.add_argument('--state-file', default='data/known_items.json', help='State file path')
+        reset_parser.add_argument('--state-file', default=None, help='[DEPRECATED] State now stored in database')
     
     def _add_data_parser(self, subparsers):
         """Add data command parser."""
@@ -178,6 +179,28 @@ class CLIRouter:
         # Status subcommand
         status_parser = integrations_subparsers.add_parser('status', help='Show integration status')
     
+    def _add_health_parser(self, subparsers):
+        """Add health command parser."""
+        health_parser = subparsers.add_parser(
+            'health',
+            help='System health monitoring and diagnostics'
+        )
+        
+        health_subparsers = health_parser.add_subparsers(
+            dest='subcommand',
+            help='Health operations',
+            metavar='{check,database,integrations}'
+        )
+        
+        # General health check
+        check_parser = health_subparsers.add_parser('check', help='Run comprehensive health check')
+        
+        # Database health check
+        database_parser = health_subparsers.add_parser('database', help='Check database health')
+        
+        # Integrations health check
+        integrations_parser = health_subparsers.add_parser('integrations', help='Check integration health')
+        integrations_parser.add_argument('--test', action='store_true', help='Test actual connections')
     
     def _get_examples_text(self) -> str:
         """Get examples text for help."""
@@ -189,6 +212,7 @@ Examples:
   python run.py state stats
   python run.py data cleanup --days 30
   python run.py integrations test
+  python run.py health check
   
 """
     

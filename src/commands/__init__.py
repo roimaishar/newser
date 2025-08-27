@@ -12,6 +12,7 @@ from .news import NewsCommand
 from .state import StateCommand
 from .data import DataCommand
 from .integrations import IntegrationsCommand
+from .health import HealthCommand
 
 # Command registry for easy extension
 COMMANDS: Dict[str, Type[BaseCommand]] = {
@@ -19,6 +20,7 @@ COMMANDS: Dict[str, Type[BaseCommand]] = {
     'state': StateCommand,
     'data': DataCommand,
     'integrations': IntegrationsCommand,
+    'health': HealthCommand,
 }
 
 def get_command(command_name: str) -> BaseCommand:

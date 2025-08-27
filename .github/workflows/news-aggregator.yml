@@ -2,20 +2,20 @@ name: Israeli News Aggregator
 
 on:
   schedule:
-    # Run every 4 hours during business hours Israel time (UTC+3)
-    # 6:00, 10:00, 14:00, 18:00, 22:00 Israel time = 3:00, 7:00, 11:00, 15:00, 19:00 UTC
-    - cron: '0 3,7,11,15,19 * * *'
+    # Run every 30 minutes during business hours Israel time (UTC+3)
+    # Business hours: 6 AM - 11 PM Israel time = 3 AM - 8 PM UTC
+    - cron: '*/30 3-20 * * *'
   workflow_dispatch:
     inputs:
       hours:
         description: 'Hours to look back for articles'
         required: false
-        default: '4'
+        default: '1'
         type: string
-      enable_ai_analysis:
-        description: 'Enable AI analysis'
+      updates_only:
+        description: 'Show only new/updated items'
         required: false
-        default: true
+        default: false
         type: boolean
       send_to_slack:
         description: 'Send to Slack'
@@ -25,6 +25,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
+  PYTHONPATH: ./src
 
 jobs:
   aggregate-news:
@@ -46,29 +47,35 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
-    - name: Test integrations (optional)
-      id: test-integrations
+    - name: Database health check
+      id: health-check
       continue-on-error: true
       env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       run: |
-        python run.py --test-integrations
+        python -c "from src.core.database import get_database; db = get_database(); print(db.health_check())"
     
-    - name: Run news aggregation
+    - name: Run Hebrew news analysis
       env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       run: |
         # Set parameters based on trigger
-        HOURS="${{ github.event.inputs.hours || '4' }}"
+        HOURS="${{ github.event.inputs.hours || '1' }}"
         
-        # Build command
-        CMD="python run.py --hours $HOURS"
+        # Build command with new modular structure
+        CMD="python run.py news analyze --hours $HOURS --hebrew"
         
-        # Add AI analysis if enabled and API key is available
-        if [[ "${{ github.event.inputs.enable_ai_analysis || 'true' }}" == "true" ]] && [[ -n "$OPENAI_API_KEY" ]]; then
-          CMD="$CMD --ai-analysis"
+        # Add updates-only mode if requested
+        if [[ "${{ github.event.inputs.updates_only || 'false' }}" == "true" ]]; then
+          CMD="$CMD --updates-only"
         fi
         
         # Add Slack notification if enabled and webhook is available
@@ -79,11 +86,20 @@ jobs:
         echo "Running: $CMD"
         $CMD
     
+    - name: Cleanup old database records
+      if: success()
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      run: |
+        python -c "from src.core.database import get_database; db = get_database(); deleted = db.cleanup_old_records(); print(f'Cleaned up {deleted} old records')"
+    
     - name: Send error alert to Slack on failure
       if: failure() && env.SLACK_WEBHOOK_URL
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       run: |
         curl -X POST -H 'Content-type: application/json' \
-          --data '{"text":"🚨 Israeli News Aggregator workflow failed!\n\nWorkflow: '"$GITHUB_WORKFLOW"'\nRun: '"$GITHUB_SERVER_URL"'/'"$GITHUB_REPOSITORY"'/actions/runs/'"$GITHUB_RUN_ID"'","username":"GitHub Actions","icon_emoji":":warning:"}' \
+          --data '{"text":"🚨 Israeli News Aggregator workflow failed!\n\nWorkflow: '"$GITHUB_WORKFLOW"'\nRun: '"$GITHUB_SERVER_URL"'/"$GITHUB_REPOSITORY"'/actions/runs/'"$GITHUB_RUN_ID"'","username":"GitHub Actions","icon_emoji":":warning:"}' \
           $SLACK_WEBHOOK_URL

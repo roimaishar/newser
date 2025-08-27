@@ -36,14 +36,13 @@ class StateCommand(BaseCommand):
     def stats(self, args: Namespace) -> int:
         """Show statistics about known items state."""
         try:
-            state_file = getattr(args, 'state_file', 'data/known_items.json')
-            state_manager = StateManager(state_file=state_file)
+            state_manager = StateManager()
             
             # Get state statistics
             stats = state_manager.get_stats()
             
             print(f"\n=== State Statistics ===")
-            print(f"📁 State file: {state_file}")
+            print(f"📊 Database connection: {'✅ Connected' if stats.get('database_healthy') else '❌ Disconnected'}")
             print(f"📊 Total known events: {stats['total_events']}")
             
             if stats.get('oldest_event_date'):
@@ -70,8 +69,7 @@ class StateCommand(BaseCommand):
         """Clean up old events from state."""
         try:
             days = getattr(args, 'days', 30)
-            state_file = getattr(args, 'state_file', 'data/known_items.json')
-            state_manager = StateManager(state_file=state_file)
+            state_manager = StateManager()
             
             print(f"🧹 Cleaning up events older than {days} days...")
             
@@ -97,17 +95,15 @@ class StateCommand(BaseCommand):
     def reset(self, args: Namespace) -> int:
         """Reset state (clear all known events)."""
         try:
-            state_file = getattr(args, 'state_file', 'data/known_items.json')
-            
             # Confirm destructive action
             if not getattr(args, 'force', False):
-                print(f"⚠️  This will delete all known events from {state_file}")
+                print(f"⚠️  This will delete all known events from the database")
                 confirm = input("Are you sure? (yes/no): ").lower().strip()
                 if confirm != 'yes':
                     print("❌ Reset cancelled")
                     return 0
             
-            state_manager = StateManager(state_file=state_file)
+            state_manager = StateManager()
             
             # Get stats before reset
             before_stats = state_manager.get_stats()
@@ -117,7 +113,7 @@ class StateCommand(BaseCommand):
             
             print(f"✅ State reset completed:")
             print(f"   • Removed: {before_stats['total_events']} events")
-            print(f"   • State file: {state_file}")
+            print(f"   • Database: cleared")
             
             return 0
             

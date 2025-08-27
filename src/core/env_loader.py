@@ -89,5 +89,49 @@ def get_env_var(key: str, default: str = None, required: bool = False) -> str:
     
     return value
 
+def validate_database_config() -> bool:
+    """
+    Validate that required database configuration is present.
+    
+    Returns:
+        True if valid configuration found
+        
+    Raises:
+        ValueError: If required configuration is missing
+    """
+    required_vars = [
+        'SUPABASE_URL',
+        'SUPABASE_DB_PASSWORD'
+    ]
+    
+    missing = []
+    for var in required_vars:
+        if not os.environ.get(var):
+            missing.append(var)
+    
+    if missing:
+        raise ValueError(f"Missing required database environment variables: {', '.join(missing)}")
+    
+    # Validate URL format
+    supabase_url = os.environ.get('SUPABASE_URL', '')
+    if not supabase_url.startswith('https://') or not supabase_url.endswith('.supabase.co'):
+        raise ValueError(f"Invalid SUPABASE_URL format. Expected: https://your-project.supabase.co")
+    
+    logger.info("Database configuration validated successfully")
+    return True
+
+def get_database_config() -> dict:
+    """
+    Get database configuration from environment variables.
+    
+    Returns:
+        Dictionary with database configuration
+    """
+    return {
+        'supabase_url': get_env_var('SUPABASE_URL', required=True),
+        'supabase_password': get_env_var('SUPABASE_DB_PASSWORD', required=True),
+        'supabase_anon_key': get_env_var('SUPABASE_ANON_KEY')  # Optional for direct DB access
+    }
+
 # Auto-load .env file when module is imported
 load_env_file()

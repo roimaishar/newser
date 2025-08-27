@@ -12,12 +12,13 @@ High-level orchestrator that combines:
 
 import json
 import logging
+import hashlib
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 
 from .feed_parser import Article
-from .state_manager import StateManager, KnownEvent
+from .state_manager import StateManager, KnownItem
 from .prompts import NewsAnalysisPrompts
 
 logger = logging.getLogger(__name__)
@@ -336,20 +337,12 @@ class HebrewNewsAnalyzer:
             if not event_id:
                 continue
                 
-            # Create KnownEvent from analysis
-            event = KnownEvent(
-                event_id=event_id,
-                baseline=item.get('lede_he', ''),
-                last_update=datetime.now(),
-                key_facts=item.get('what_changed_he', []),
-                sources=["ynet", "walla"],  # Default sources
-                confidence=item.get('confidence', 0.7),
-                created_at=datetime.now()
-            )
-            events_to_update.append(event)
+            # Create hash for database storage
+            event_hash = hashlib.sha256(event_id.encode('utf-8')).hexdigest()
+            events_to_update.append(event_hash)
         
         if events_to_update:
-            self.state_manager.add_events_bulk(events_to_update)
+            self.state_manager.update_known_items(events_to_update, item_type='event')
             logger.info(f"Updated state with {len(events_to_update)} events")
     
     def _extract_topics_from_items(self, items: List[Dict[str, Any]]) -> List[str]:
