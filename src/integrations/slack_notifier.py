@@ -13,6 +13,8 @@ from typing import List, Dict, Optional, Any
 from datetime import datetime
 import requests
 
+from .notification_formatter import NotificationFormatter
+
 logger = logging.getLogger(__name__)
 
 class SlackNotifier:
@@ -31,6 +33,7 @@ class SlackNotifier:
         
         self.timeout = 10
         self.max_message_length = 4000  # Slack's limit is ~40000 chars, but keep it reasonable
+        self.formatter = NotificationFormatter()
     
     def send_message(self, text: str, channel: Optional[str] = None, username: str = "NewsBot") -> bool:
         """
@@ -58,21 +61,49 @@ class SlackNotifier:
         
         return self._send_webhook_message(payload)
     
-    def send_news_summary(self, articles: List[Dict[str, Any]], analysis: Optional[Dict[str, Any]] = None, hebrew_result=None) -> bool:
+    def send_news_summary(self, articles: List[Dict[str, Any]], analysis: Optional[Dict[str, Any]] = None, hebrew_result=None, format_style: str = "headlines_first") -> bool:
         """
-        Send a formatted news summary to Slack.
+        Send a formatted news summary to Slack with enhanced formatting options.
         
         Args:
             articles: List of news articles
             analysis: Optional (unused, kept for compatibility)
             hebrew_result: Optional Hebrew analysis result
+            format_style: Format style - 'compact', 'digest', 'thread', 'original'
             
         Returns:
             True if sent successfully, False otherwise
         """
         if not articles:
-            return self.send_message("📰 No new articles found in the specified time period.")
+            return self.send_message("📰 אין חדשות חדשות בשעה האחרונה")
         
+        # Use enhanced formatting based on style
+        if format_style == "headlines_first":
+            payload = self.formatter.format_slack_headlines_first(articles, hebrew_result)
+        elif format_style == "executive":
+            payload = self.formatter.format_slack_executive(articles, hebrew_result)
+        elif format_style == "expandable":
+            payload = self.formatter.format_slack_expandable(articles, hebrew_result)
+        elif format_style == "digest":
+            payload = self.formatter.format_slack_digest(articles, hebrew_result)
+        elif format_style == "thread":
+            # For thread format, send main message first, then replies
+            messages = self.formatter.format_slack_thread(articles, hebrew_result)
+            if messages:
+                # Send main message first
+                main_success = self._send_webhook_message(messages[0])
+                # Note: Thread replies would need message timestamp from first response
+                # This is a limitation of webhooks - would need Slack API for full threading
+                return main_success
+            return False
+        else:
+            # Fall back to original format
+            return self._send_original_format(articles, hebrew_result)
+        
+        return self._send_webhook_message(payload)
+    
+    def _send_original_format(self, articles: List[Dict[str, Any]], hebrew_result=None) -> bool:
+        """Original format for backward compatibility."""
         # Create formatted message
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         
@@ -145,11 +176,11 @@ class SlackNotifier:
         # Add divider
         blocks.append({"type": "divider"})
         
-        # Top articles (limit to 10 to avoid message size limits)
-        top_articles = articles[:10]
+        # Top articles (limit to 5 for compact view)
+        top_articles = articles[:5]
         
         for i, article in enumerate(top_articles, 1):
-            title = article.get('title', 'No Title')[:100]  # Truncate long titles
+            title = article.get('title', 'No Title')[:80]  # Shorter titles
             link = article.get('link', '')
             source = article.get('source', '').upper()
             published = article.get('published')
@@ -170,7 +201,7 @@ class SlackNotifier:
                 article_text += f"\n📰 {source}"
             
             if link:
-                article_text += f"\n<{link}|Read more>"
+                article_text += f"\n<{link}|קרא עוד>"
             
             article_block = {
                 "type": "section",
@@ -182,13 +213,13 @@ class SlackNotifier:
             blocks.append(article_block)
         
         # Footer if there are more articles
-        if len(articles) > 10:
+        if len(articles) > 5:
             footer_block = {
                 "type": "context",
                 "elements": [
                     {
                         "type": "mrkdwn",
-                        "text": f"_... and {len(articles) - 10} more articles_"
+                        "text": f"_... ועוד {len(articles) - 5} כתבות_"
                     }
                 ]
             }
@@ -267,6 +298,7 @@ class SlackNotifier:
                 self.webhook_url,
                 json=payload,
                 timeout=self.timeout,
+                verify=True,
                 headers={"Content-Type": "application/json"}
             )
             

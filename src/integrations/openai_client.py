@@ -61,7 +61,7 @@ class OpenAIClient:
         url = f"{self.base_url}/{endpoint}"
         
         try:
-            response = requests.post(url, headers=self.headers, json=data, timeout=30)
+            response = requests.post(url, headers=self.headers, json=data, timeout=30, verify=True)
             response.raise_for_status()
             return response.json()
             

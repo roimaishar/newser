@@ -1,0 +1,125 @@
+{
+  "date": "2025-08-28",
+  "created": "2025-08-28T10:10:08.839253",
+  "daily_totals": {
+    "runs": 2,
+    "articles_scraped": 6,
+    "articles_after_dedup": 6,
+    "analyses_completed": 2,
+    "slack_messages_sent": 1,
+    "successful_runs": 2,
+    "failed_runs": 0,
+    "avg_runtime": 7.2910685539245605,
+    "avg_fetch_time": 0.19631155331929526,
+    "avg_analysis_time": 5.423605283101399
+  },
+  "runs": [
+    {
+      "run_id": "fb80b614",
+      "timestamp": "2025-08-28T10:10:08.839180",
+      "command": "news analyze --hours 1 --slack",
+      "total_duration": 8.682240009307861,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1756365000.19842,
+          "end_time": 1756365000.4289029,
+          "duration": 0.230482816696167,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1756365000.4289181,
+          "end_time": 1756365000.429078,
+          "duration": 0.00015997886657714844,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1756365000.429085,
+          "end_time": 1756365000.4296682,
+          "duration": 0.0005831718444824219,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1756365002.657985,
+          "end_time": 1756365008.564595,
+          "duration": 5.906610012054443,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "slack_notification",
+          "start_time": 1756365008.56461,
+          "end_time": 1756365008.5647528,
+          "duration": 0.00014281272888183594,
+          "success": true,
+          "error_message": null
+        }
+      ],
+      "articles_scraped": 3,
+      "articles_after_dedup": 3,
+      "analysis_completed": true,
+      "slack_sent": false,
+      "success": true
+    },
+    {
+      "run_id": "7ce63aed",
+      "timestamp": "2025-08-28T10:10:48.055358",
+      "command": "news analyze --hours 1 --slack",
+      "total_duration": 6.59548282623291,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1756365041.501132,
+          "end_time": 1756365041.680358,
+          "duration": 0.17922592163085938,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1756365041.6804,
+          "end_time": 1756365041.680963,
+          "duration": 0.0005631446838378906,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1756365041.680985,
+          "end_time": 1756365041.6821902,
+          "duration": 0.0012052059173583984,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1756365042.095176,
+          "end_time": 1756365047.277279,
+          "duration": 5.182102918624878,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "slack_notification",
+          "start_time": 1756365047.277292,
+          "end_time": 1756365047.799923,
+          "duration": 0.5226309299468994,
+          "success": true,
+          "error_message": null
+        }
+      ],
+      "articles_scraped": 3,
+      "articles_after_dedup": 3,
+      "analysis_completed": true,
+      "slack_sent": true,
+      "success": true
+    }
+  ],
+  "last_updated": "2025-08-28T10:10:48.055723"
+}
