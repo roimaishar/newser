@@ -68,23 +68,19 @@ jobs:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       run: |
         # Set parameters based on trigger
-        HOURS="${{ github.event.inputs.hours || '1' }}"
-        
-        # Build command with new modular structure
-        CMD="python run.py news analyze --hours $HOURS --hebrew"
-        
-        # Add updates-only mode if requested
-        if [[ "${{ github.event.inputs.updates_only || 'false' }}" == "true" ]]; then
-          CMD="$CMD --updates-only"
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          HOURS="${{ github.event.inputs.hours }}"
+          UPDATES_FLAG=""
+          if [ "${{ github.event.inputs.updates_only }}" = "true" ]; then
+            UPDATES_FLAG="--updates-only"
+          fi
+        else
+          HOURS="1"  # For scheduled runs, check last hour
+          UPDATES_FLAG="--updates-only"
         fi
         
-        # Add Slack notification if enabled and webhook is available
-        if [[ "${{ github.event.inputs.send_to_slack || 'true' }}" == "true" ]] && [[ -n "$SLACK_WEBHOOK_URL" ]]; then
-          CMD="$CMD --slack"
-        fi
-        
-        echo "Running: $CMD"
-        $CMD
+        echo "Running: python run.py news analyze --hours $HOURS --slack $UPDATES_FLAG"
+        python run.py news analyze --hours $HOURS --slack $UPDATES_FLAG
     
     - name: Cleanup old database records
       if: success()
