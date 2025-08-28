@@ -97,5 +97,5 @@ jobs:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       run: |
         curl -X POST -H 'Content-type: application/json' \
-          --data '{"text":"🚨 Israeli News Aggregator workflow failed!\n\nWorkflow: '"$GITHUB_WORKFLOW"'\nRun: '"$GITHUB_SERVER_URL"'/"$GITHUB_REPOSITORY"'/actions/runs/'"$GITHUB_RUN_ID"'","username":"GitHub Actions","icon_emoji":":warning:"}' \
-          $SLACK_WEBHOOK_URL
+          --data "{\"text\":\"🚨 Israeli News Aggregator workflow failed!\\n\\nWorkflow: $GITHUB_WORKFLOW\\nRun: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\",\"username\":\"GitHub Actions\",\"icon_emoji\":\":warning:\"}" \
+          "$SLACK_WEBHOOK_URL"
