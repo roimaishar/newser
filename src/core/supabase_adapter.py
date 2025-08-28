@@ -40,7 +40,12 @@ class SupabaseApiAdapter:
     def _create_client(self) -> Client:
         """Create and configure Supabase client."""
         supabase_url = get_env_var('SUPABASE_URL', required=True)
-        supabase_key = get_env_var('SUPABASE_ANON_KEY', required=True)
+        
+        # Try service key first (for full permissions), fallback to anon key
+        supabase_key = get_env_var('SUPABASE_SERVICE_KEY') or get_env_var('SUPABASE_ANON_KEY', required=True)
+        
+        if not supabase_key:
+            raise SupabaseApiError("Neither SUPABASE_SERVICE_KEY nor SUPABASE_ANON_KEY found")
         
         client = create_client(supabase_url, supabase_key)
         return client
