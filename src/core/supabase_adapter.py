@@ -101,14 +101,23 @@ class SupabaseApiAdapter:
             for article in articles:
                 content_hash = self._generate_content_hash(article)
                 
-                # Check if article already exists
-                existing = (self.client.table('articles')
-                          .select('id')
-                          .eq('content_hash', content_hash)
-                          .execute())
+                # Check if article already exists by content_hash
+                existing_hash = (self.client.table('articles')
+                               .select('id')
+                               .eq('content_hash', content_hash)
+                               .execute())
                 
-                if existing.data:
-                    continue  # Skip duplicate
+                if existing_hash.data:
+                    continue  # Skip duplicate by content hash
+                
+                # Check if article already exists by link
+                existing_link = (self.client.table('articles')
+                               .select('id')
+                               .eq('link', article.link)
+                               .execute())
+                
+                if existing_link.data:
+                    continue  # Skip duplicate by link
                 
                 # Insert new article
                 article_data = {
