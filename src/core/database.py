@@ -473,29 +473,49 @@ def get_database():
     """Get global database adapter instance with automatic fallback."""
     global _db_adapter
     if _db_adapter is None:
-        # Skip slow PostgreSQL connection attempt if API adapter is available
-        if HAS_API_ADAPTER:
+        # Force API-only mode in CI environments (GitHub Actions, etc.)
+        import os
+        is_ci = os.getenv('CI') or os.getenv('GITHUB_ACTIONS')
+        
+        if HAS_API_ADAPTER and (is_ci or not _should_try_direct_connection()):
             try:
-                logger.info("Using Supabase REST API (skipping slow PostgreSQL connection)")
+                logger.info("Using Supabase REST API (CI environment or API-preferred mode)")
                 _db_adapter = get_api_database()
                 return _db_adapter
             except Exception as api_error:
-                logger.warning(f"API adapter failed: {api_error}, trying direct connection")
+                if is_ci:
+                    # In CI, don't fallback to direct connection - it will timeout
+                    logger.error(f"API connection failed in CI environment: {api_error}")
+                    raise DatabaseError(f"Database API connection failed in CI: {api_error}")
+                else:
+                    logger.warning(f"API adapter failed: {api_error}, trying direct connection")
         
-        try:
-            # Try direct PostgreSQL connection as fallback
-            _db_adapter = DatabaseAdapter()
-            # Test connection
-            _db_adapter.health_check()
-            logger.info("Using direct PostgreSQL connection")
-        except Exception as e:
-            if HAS_API_ADAPTER:
-                logger.error(f"Both API and direct connection failed")
-                raise DatabaseError(f"No database connection available: {e}")
-            else:
-                logger.error("Direct DB connection failed and no API adapter")
-                raise DatabaseError(f"No database connection available: {e}")
+        if not is_ci:
+            try:
+                # Try direct PostgreSQL connection only in non-CI environments
+                logger.info("Attempting direct PostgreSQL connection")
+                _db_adapter = DatabaseAdapter()
+                _db_adapter.health_check()
+                logger.info("Using direct PostgreSQL connection")
+            except Exception as e:
+                if HAS_API_ADAPTER:
+                    logger.error(f"Both API and direct connection failed")
+                    raise DatabaseError(f"No database connection available: {e}")
+                else:
+                    logger.error("Direct DB connection failed and no API adapter")
+                    raise DatabaseError(f"No database connection available: {e}")
+        else:
+            # This shouldn't happen if API adapter worked above
+            raise DatabaseError("No database connection available in CI environment")
+    
     return _db_adapter
+
+
+def _should_try_direct_connection() -> bool:
+    """Determine if direct PostgreSQL connection should be attempted."""
+    import os
+    # Skip direct connection if we're in a restricted network environment
+    return not (os.getenv('CI') or os.getenv('GITHUB_ACTIONS') or os.getenv('FORCE_API_MODE'))
 
 
 def close_database():
