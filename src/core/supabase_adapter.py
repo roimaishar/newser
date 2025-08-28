@@ -42,13 +42,28 @@ class SupabaseApiAdapter:
         supabase_url = get_env_var('SUPABASE_URL', required=True)
         
         # Try service key first (for full permissions), fallback to anon key
-        supabase_key = get_env_var('SUPABASE_SERVICE_KEY') or get_env_var('SUPABASE_ANON_KEY', required=True)
+        service_key = get_env_var('SUPABASE_SERVICE_KEY')
+        anon_key = get_env_var('SUPABASE_ANON_KEY')
         
-        if not supabase_key:
+        if service_key:
+            logger.info("Using SUPABASE_SERVICE_KEY for API access")
+            supabase_key = service_key
+        elif anon_key:
+            logger.info("Using SUPABASE_ANON_KEY for API access")
+            supabase_key = anon_key
+        else:
             raise SupabaseApiError("Neither SUPABASE_SERVICE_KEY nor SUPABASE_ANON_KEY found")
         
-        client = create_client(supabase_url, supabase_key)
-        return client
+        try:
+            client = create_client(supabase_url, supabase_key)
+            # Test the connection immediately
+            client.table('articles').select('id').limit(1).execute()
+            logger.info("Supabase API connection test successful")
+            return client
+        except Exception as e:
+            key_type = "service" if service_key else "anon"
+            logger.error(f"Supabase API connection failed with {key_type} key: {e}")
+            raise SupabaseApiError(f"Invalid API key or connection failed: {e}")
     
     # Article Operations
     
