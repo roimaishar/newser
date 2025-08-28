@@ -41,18 +41,27 @@ class SupabaseApiAdapter:
         """Create and configure Supabase client."""
         supabase_url = get_env_var('SUPABASE_URL', required=True)
         
-        # Try service key first (for full permissions), fallback to anon key
-        service_key = get_env_var('SUPABASE_SERVICE_KEY')
-        anon_key = get_env_var('SUPABASE_ANON_KEY')
-        
+        # Try service key first (for full permissions), fallback to anon key.
+        # Treat blank strings as missing and avoid leaking secrets in logs.
+        service_key = (get_env_var('SUPABASE_SERVICE_KEY') or '').strip()
+        anon_key = (get_env_var('SUPABASE_ANON_KEY') or '').strip()
+
         if service_key:
-            logger.info("Using SUPABASE_SERVICE_KEY for API access")
+            logger.info(
+                "Using SUPABASE_SERVICE_KEY for API access (present, length=%d)",
+                len(service_key)
+            )
             supabase_key = service_key
         elif anon_key:
-            logger.info("Using SUPABASE_ANON_KEY for API access")
+            logger.info(
+                "Using SUPABASE_ANON_KEY for API access (present, length=%d)",
+                len(anon_key)
+            )
             supabase_key = anon_key
         else:
-            raise SupabaseApiError("Neither SUPABASE_SERVICE_KEY nor SUPABASE_ANON_KEY found")
+            raise SupabaseApiError(
+                "Neither SUPABASE_SERVICE_KEY nor SUPABASE_ANON_KEY found (or both empty)"
+            )
         
         try:
             client = create_client(supabase_url, supabase_key)
@@ -61,8 +70,14 @@ class SupabaseApiAdapter:
             logger.info("Supabase API connection test successful")
             return client
         except Exception as e:
-            key_type = "service" if service_key else "anon"
-            logger.error(f"Supabase API connection failed with {key_type} key: {e}")
+            key_type = "service" if service_key else ("anon" if anon_key else "none")
+            logger.error(
+                "Supabase API connection failed with %s key: %s (service_present=%s, anon_present=%s)",
+                key_type,
+                e,
+                bool(service_key),
+                bool(anon_key),
+            )
             raise SupabaseApiError(f"Invalid API key or connection failed: {e}")
     
     # Article Operations

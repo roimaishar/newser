@@ -56,6 +56,23 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
+    - name: Debug secrets presence (masked)
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        set +e
+        echo "SUPABASE_URL set: $([ -n \"$SUPABASE_URL\" ] && echo yes || echo no)"
+        echo "SUPABASE_DB_PASSWORD set: $([ -n \"$SUPABASE_DB_PASSWORD\" ] && echo yes || echo no)"
+        echo "SUPABASE_ANON_KEY set: $([ -n \"$SUPABASE_ANON_KEY\" ] && echo yes || echo no), length=${#SUPABASE_ANON_KEY}"
+        echo "SUPABASE_SERVICE_KEY set: $([ -n \"$SUPABASE_SERVICE_KEY\" ] && echo yes || echo no), length=${#SUPABASE_SERVICE_KEY}"
+        echo "OPENAI_API_KEY set: $([ -n \"$OPENAI_API_KEY\" ] && echo yes || echo no)"
+        echo "SLACK_WEBHOOK_URL set: $([ -n \"$SLACK_WEBHOOK_URL\" ] && echo yes || echo no)"
+    
     - name: Database health check
       id: health-check
       continue-on-error: true
