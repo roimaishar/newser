@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from .feed_parser import Article
 from .state_manager import StateManager, KnownItem
 from .prompts import NewsAnalysisPrompts
+from .json_validator import validate_hebrew_analysis
 
 logger = logging.getLogger(__name__)
 
@@ -248,8 +249,8 @@ class HebrewNewsAnalyzer:
             response = self.openai_client._make_api_request("chat/completions", data)
             content = response['choices'][0]['message']['content'].strip()
             
-            # Parse novelty analysis response
-            analysis_data = self._parse_ai_response(content)
+            # Parse and validate novelty analysis response
+            analysis_data = validate_hebrew_analysis(content, "updates")
             
             # Extract results
             has_new = analysis_data.get('has_new', False)
