@@ -9,15 +9,9 @@ from typing import List
 from datetime import datetime
 
 from .base import BaseCommand
-from core.feed_parser import FeedParser, Article
-from core.deduplication import Deduplicator
-from core.security import SecurityValidator
-from core.state_manager import StateManager
+from core.feed_parser import Article
 from core.hebrew_analyzer import HebrewNewsAnalyzer
-from core.data_manager import RunRecord, AnalysisRecord, DataManager
-from core.database import get_database
-from integrations.openai_client import OpenAIClient
-from integrations.slack_notifier import SlackNotifier
+from core.data_manager import RunRecord, AnalysisRecord
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +44,24 @@ class NewsCommand(BaseCommand):
         self.metrics.start_run(run_id, f"news fetch --hours {args.hours}")
         
         try:
-            # Initialize components
-            security_validator = SecurityValidator()
-            feed_parser = FeedParser()
+            # Get components from container
+            security_validator = self.security_validator
             
-            # Fetch articles
+            # Fetch articles (async or sync)
             with self.metrics.time_operation("rss_fetch"):
-                articles = feed_parser.get_recent_articles(hours=args.hours)
+                if getattr(args, 'async_fetch', False):
+                    # Use async RSS fetching
+                    from core.async_feed_parser import fetch_feeds_async
+                    articles = fetch_feeds_async(
+                        hours=args.hours,
+                        timeout=self.config.app.feed_timeout,
+                        max_concurrent=self.config.app.max_concurrent_feeds
+                    )
+                else:
+                    # Use standard sync RSS fetching
+                    feed_parser = self.feed_parser
+                    articles = feed_parser.get_recent_articles(hours=args.hours)
+                
                 self.metrics.record_stat("articles_scraped", len(articles))
             
             if not articles:
@@ -83,16 +88,76 @@ class NewsCommand(BaseCommand):
                     similarity = getattr(args, 'similarity', 0.8)
                     if similarity is None:
                         similarity = 0.8
-                    deduplicator = Deduplicator(similarity_threshold=similarity)
+                    deduplicator = self.create_deduplicator(similarity_threshold=similarity)
                     articles = deduplicator.deduplicate(articles)
                     self.metrics.record_stat("articles_after_dedup", len(articles))
             else:
                 self.metrics.record_stat("articles_after_dedup", len(articles))
             
             # Store articles in database
-            db = get_database()
-            stored_count = db.store_articles(articles)
+            stored_count = self.database.store_articles(articles)
             logger.info(f"Stored {stored_count} new articles in database")
+            
+            # Hebrew analysis (now default unless --no-analysis flag is used)
+            hebrew_result = None
+            if not getattr(args, 'no_analysis', False) and articles:
+                state_manager = self.state_manager
+                
+                with self.metrics.time_operation("hebrew_analysis"):
+                    try:
+                        openai_client = self.create_openai_client()
+                        hebrew_analyzer = HebrewNewsAnalyzer(state_manager, openai_client)
+                        
+                        if getattr(args, 'updates_only', False):
+                            hebrew_result = hebrew_analyzer.analyze_articles_with_novelty(articles, hours=args.hours)
+                        else:
+                            hebrew_result = hebrew_analyzer.analyze_articles_thematic(articles, hours=args.hours)
+                        
+                        self.metrics.record_stat("analysis_completed", True)
+                        logger.info("Hebrew analysis completed successfully")
+                        
+                    except Exception as e:
+                        self.logger.warning(f"Hebrew analysis failed (continuing without it): {e}")
+                        hebrew_result = None
+                        self.metrics.record_stat("analysis_completed", False)
+            
+            # Send to Slack if requested
+            if getattr(args, 'slack', False) and articles:
+                with self.metrics.time_operation("slack_notification"):
+                    try:
+                        slack_client = self.create_slack_notifier()
+                        article_dicts = [article.to_dict() for article in articles]
+                        
+                        success = slack_client.send_news_summary(
+                            article_dicts, 
+                            hebrew_result=hebrew_result
+                        )
+                        
+                        self.metrics.record_stat("slack_sent", success)
+                        if success:
+                            self.logger.info("Successfully sent to Slack")
+                        else:
+                            self.logger.error("Failed to send to Slack")
+                            
+                    except Exception as e:
+                        self.logger.error(f"Slack notification failed: {e}")
+                        self.metrics.record_stat("slack_sent", False)
+            
+            # Store analysis record if we have results
+            if hebrew_result:
+                processing_time = sum(getattr(op, 'duration', 0) for op in getattr(self.metrics, '_current_operations', []) 
+                                    if "analysis" in getattr(op, 'operation', ''))
+                
+                analysis_record = AnalysisRecord(
+                    run_id=run_id,
+                    timestamp=hebrew_result.analysis_timestamp,
+                    analysis_type=hebrew_result.analysis_type,
+                    hebrew_result=hebrew_result,
+                    articles_analyzed=hebrew_result.articles_analyzed,
+                    confidence=hebrew_result.confidence,
+                    processing_time=processing_time
+                )
+                self.data_manager.store_analysis_record(analysis_record)
             
             # Store run record with metrics
             processing_time = self.metrics.get_total_time() if hasattr(self.metrics, 'get_total_time') else 0
@@ -108,8 +173,11 @@ class NewsCommand(BaseCommand):
             )
             self.data_manager.store_run_record(run_record)
             
-            # Display results
-            self._display_articles(articles, args.hours)
+            # Display results (now includes Hebrew analysis if available)
+            if hebrew_result:
+                self._display_hebrew_analysis(articles, hebrew_result, args)
+            else:
+                self._display_articles(articles, args.hours)
             
             self.metrics.end_run(success=True)
             return 0
@@ -136,8 +204,7 @@ class NewsCommand(BaseCommand):
             articles = self._fetch_and_process_articles(args)
             
             # Store articles in database
-            db = get_database()
-            stored_count = db.store_articles(articles)
+            stored_count = self.database.store_articles(articles)
             logger.info(f"Stored {stored_count} new articles in database")
             
             if not articles:
@@ -145,12 +212,12 @@ class NewsCommand(BaseCommand):
                 self.metrics.end_run(success=True)
                 return 0
             
-            # Initialize Hebrew analyzer with database state manager
-            state_manager = StateManager()
+            # Initialize Hebrew analyzer with state manager from container
+            state_manager = self.state_manager
             
             with self.metrics.time_operation("hebrew_analysis"):
                 try:
-                    openai_client = OpenAIClient()
+                    openai_client = self.create_openai_client()
                     hebrew_analyzer = HebrewNewsAnalyzer(state_manager, openai_client)
                     
                     if getattr(args, 'updates_only', False):
@@ -169,7 +236,7 @@ class NewsCommand(BaseCommand):
             if getattr(args, 'slack', False) and hebrew_result:
                 with self.metrics.time_operation("slack_notification"):
                     try:
-                        slack_client = SlackNotifier()
+                        slack_client = self.create_slack_notifier()
                         article_dicts = [article.to_dict() for article in articles]
                         
                         success = slack_client.send_news_summary(
@@ -267,12 +334,23 @@ class NewsCommand(BaseCommand):
     
     def _fetch_and_process_articles(self, args: Namespace) -> List[Article]:
         """Helper method to fetch and process articles."""
-        security_validator = SecurityValidator()
-        feed_parser = FeedParser()
+        security_validator = self.security_validator
         
-        # Fetch articles
+        # Fetch articles (async or sync)
         with self.metrics.time_operation("rss_fetch"):
-            articles = feed_parser.get_recent_articles(hours=args.hours)
+            if getattr(args, 'async_fetch', False):
+                # Use async RSS fetching
+                from core.async_feed_parser import fetch_feeds_async
+                articles = fetch_feeds_async(
+                    hours=args.hours,
+                    timeout=self.config.app.feed_timeout,
+                    max_concurrent=self.config.app.max_concurrent_feeds
+                )
+            else:
+                # Use standard sync RSS fetching
+                feed_parser = self.feed_parser
+                articles = feed_parser.get_recent_articles(hours=args.hours)
+            
             self.metrics.record_stat("articles_scraped", len(articles))
         
         if not articles:
@@ -298,7 +376,7 @@ class NewsCommand(BaseCommand):
                 similarity = getattr(args, 'similarity', 0.8)
                 if similarity is None:
                     similarity = 0.8
-                deduplicator = Deduplicator(similarity_threshold=similarity)
+                deduplicator = self.create_deduplicator(similarity_threshold=similarity)
                 articles = deduplicator.deduplicate(articles)
                 self.metrics.record_stat("articles_after_dedup", len(articles))
                 self.logger.info(f"After deduplication: {len(articles)} articles")
@@ -337,7 +415,7 @@ class NewsCommand(BaseCommand):
         print(f"📰 כתבות: {len(articles)} | 🎯 מצב: {mode_name}")
         
         # Show Hebrew analysis
-        from main import format_hebrew_analysis
+        from core.formatters import format_hebrew_analysis
         print(format_hebrew_analysis(hebrew_result))
         
         # In updates-only mode, don't show all articles if no new content

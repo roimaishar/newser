@@ -1,5 +1,6 @@
 feedparser==6.0.11
 requests==2.31.0
+aiohttp==3.9.1
 python-dateutil==2.8.2
 psycopg[binary]==3.2.9
 supabase==1.0.4

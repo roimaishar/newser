@@ -33,40 +33,41 @@ class NotificationFormatter:
         time_str = datetime.now().strftime("%H:%M")
         
         if style == "headlines":
-            # Direct headlines approach
+            # Direct headlines approach - maximize space for headlines
             top_headlines = []
             for article in articles[:3]:
-                title = article.get('title', '')[:35]  # Shorter titles
+                title = article.get('title', '')[:50]  # Longer titles since we removed other info
                 if 'פיגוע' in title or 'רצח' in title:
                     top_headlines.append(f"🚨 {title}")
                 else:
-                    top_headlines.append(f"📰 {title}")
+                    top_headlines.append(title)  # Remove 📰 emoji to save space
             return "\n".join(top_headlines)
         
         elif style == "topic":
-            # Topic + count approach
+            # Topic + count approach - remove time and sources to save space
             main_topic = "חדשות כלליות"
             if hebrew_result and hebrew_result.key_topics:
                 main_topic = hebrew_result.key_topics[0]
             urgency = "🔥" if count >= 5 else "📊"
-            return f"{urgency} {main_topic} | {count} כתבות\n{time_str} | יינט, וואלה"
+            return f"{urgency} {main_topic} ({count} כתבות)"
         
         elif style == "urgent":
-            # Urgent news with key headlines
+            # Urgent news with key headlines - focus on main headline
             urgent_keywords = ['פיגוע', 'רצח', 'מלחמה', 'טיל']
             urgent_articles = [a for a in articles if any(kw in a.get('title', '') for kw in urgent_keywords)]
             
             if urgent_articles:
-                title = urgent_articles[0].get('title', '')[:40]
+                title = urgent_articles[0].get('title', '')[:60]  # Longer title
                 other_count = len(articles) - 1
-                return f"🚨 חדשות דחופות ({count})\n{title}" + (f", +{other_count} נוספות" if other_count > 0 else "")
+                return f"🚨 {title}" + (f" (+{other_count})" if other_count > 0 else "")
             else:
-                return f"⚡ {count} חדשות חמות | {main_topic if hebrew_result and hebrew_result.key_topics else 'עדכונים'}"
+                main_topic = hebrew_result.key_topics[0] if hebrew_result and hebrew_result.key_topics else 'עדכונים'
+                return f"⚡ {main_topic} ({count} כתבות)"
         
         else:  # minimal
-            # Single line focus
+            # Single line focus - remove "חמות" to save space
             main_topic = hebrew_result.key_topics[0] if hebrew_result and hebrew_result.key_topics else "עדכונים"
-            return f"⚡ {count} חדשות חמות | {main_topic}"
+            return f"⚡ {main_topic} ({count})"
     
     def format_slack_headlines_first(self, articles: List[Dict], hebrew_result=None) -> Dict[str, Any]:
         """

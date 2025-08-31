@@ -8,20 +8,25 @@ This is a news aggregation application that fetches RSS feeds from Israeli news 
 
 ## Development Commands
 
-Run the news aggregator:
+Run the news aggregator (now includes AI analysis by default):
 ```bash
 source .venv/bin/activate
-python run.py --hours 24 --verbose
+python run.py news fetch --hours 24 --verbose
 ```
 
 Test with different parameters:
 ```bash
-python run.py --hours 6 --similarity 0.7 --no-dedupe
+python run.py news fetch --hours 6 --similarity 0.7 --no-dedupe --no-analysis
+python run.py news fetch --hours 12 --async --slack  # With async RSS and Slack
 ```
 
-Install dependencies:
+Install dependencies (now using uv for faster builds):
 ```bash
-pip install -r requirements.txt
+# For development with CodeArtifact
+uv pip install --extra-index-url "$UV_EXTRA_INDEX_URL" -r requirements.lock
+
+# For GitHub Actions / public environments
+uv pip install --system -r requirements.lock
 ```
 
 ## Architecture
@@ -47,11 +52,13 @@ pip install -r requirements.txt
 
 ## Current Status
 
-✅ Core RSS parsing and deduplication working
+✅ Core RSS parsing and deduplication working  
+✅ OpenAI integration for Hebrew analysis (now default)
+✅ Slack notifications for alerts
+✅ GitHub Actions workflow for automation  
+✅ Async RSS fetching for better performance
+✅ uv package manager for faster dependency resolution
 ⏳ Security improvements needed before production
-⏳ OpenAI integration for article summarization
-⏳ Slack notifications for alerts
-⏳ GitHub Actions workflow for automation
 
 ## Development Notes
 

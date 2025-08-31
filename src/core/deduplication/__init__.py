@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 """
-Deduplication module for news articles
+Deduplication package with strategy pattern implementation.
 
-Backward compatibility wrapper for the new strategy-based deduplication system.
-The original monolithic Deduplicator is preserved while new code should use
-the strategy-based approach in the deduplication package.
+Provides flexible deduplication strategies that can be combined and configured.
 """
 
+from .strategies import (
+    DeduplicationStrategy,
+    ExactUrlStrategy,
+    SimilarUrlStrategy, 
+    TitleSimilarityStrategy,
+    ExactTitleStrategy,
+    ContentHashStrategy,
+    CompositeDeduplicationStrategy
+)
+from .deduplicator import StrategyBasedDeduplicator
+
+# Re-export the backward compatibility wrapper
+# Import it locally to avoid circular imports
 import logging
 from typing import List
-from .feed_parser import Article
-from .deduplication.deduplicator import StrategyBasedDeduplicator
-from .deduplication.strategies import TitleSimilarityStrategy
-
-logger = logging.getLogger(__name__)
+from .deduplicator import StrategyBasedDeduplicator
+from .strategies import TitleSimilarityStrategy
 
 class Deduplicator:
     """
@@ -33,8 +41,7 @@ class Deduplicator:
         self.similarity_threshold = similarity_threshold
         
         # Create strategy-based deduplicator with default strategies
-        # The TitleSimilarityStrategy will be configured with custom threshold
-        from .deduplication.strategies import (
+        from .strategies import (
             ExactUrlStrategy, ContentHashStrategy, SimilarUrlStrategy, 
             ExactTitleStrategy, TitleSimilarityStrategy
         )
@@ -51,7 +58,7 @@ class Deduplicator:
             ]
         )
     
-    def deduplicate(self, articles: List[Article]) -> List[Article]:
+    def deduplicate(self, articles):
         """
         Remove duplicate articles from the list.
         
@@ -76,6 +83,18 @@ class Deduplicator:
     
     def normalize_url(self, url: str) -> str:
         """Normalize URL (for backward compatibility)."""
-        from .deduplication.strategies import ExactUrlStrategy
+        from .strategies import ExactUrlStrategy
         url_strategy = ExactUrlStrategy()
         return url_strategy.normalize_url(url)
+
+__all__ = [
+    'DeduplicationStrategy',
+    'ExactUrlStrategy',
+    'SimilarUrlStrategy',
+    'TitleSimilarityStrategy', 
+    'ExactTitleStrategy',
+    'ContentHashStrategy',
+    'CompositeDeduplicationStrategy',
+    'StrategyBasedDeduplicator',
+    'Deduplicator'
+]

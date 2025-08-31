@@ -3,12 +3,14 @@
 Base command class for the modular command architecture.
 
 Provides common functionality and interface that all commands inherit.
+Uses dependency injection for better testability and maintainability.
 """
 
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 from argparse import Namespace
+from core.container import get_container
 
 logger = logging.getLogger(__name__)
 
@@ -18,30 +20,67 @@ class BaseCommand(ABC):
     Base class for all smart command endpoints.
     
     Provides common infrastructure like data management, metrics collection,
-    and error handling that all commands can use.
+    and error handling that all commands can use. Uses dependency injection
+    container for managing service instances.
     """
     
-    def __init__(self):
-        """Initialize base command with common dependencies."""
+    def __init__(self, container=None):
+        """
+        Initialize base command with dependency injection container.
+        
+        Args:
+            container: Optional container instance. If None, uses global container.
+        """
         self.logger = logging.getLogger(self.__class__.__name__)
-        self._data_manager = None
-        self._metrics_collector = None
+        self._container = container or get_container()
+    
+    @property
+    def config(self):
+        """Get configuration from container."""
+        return self._container.get('config')
     
     @property
     def data_manager(self):
-        """Lazy-loaded data manager."""
-        if self._data_manager is None:
-            from core.data_manager import DataManager
-            self._data_manager = DataManager()
-        return self._data_manager
+        """Get data manager from container."""
+        return self._container.get('data_manager')
     
     @property
     def metrics(self):
-        """Lazy-loaded metrics collector."""
-        if self._metrics_collector is None:
-            from core.metrics_collector import MetricsCollector
-            self._metrics_collector = MetricsCollector()
-        return self._metrics_collector
+        """Get metrics collector from container."""
+        return self._container.get('metrics_collector')
+    
+    @property
+    def database(self):
+        """Get database instance from container."""
+        return self._container.get('database')
+    
+    @property
+    def security_validator(self):
+        """Get security validator from container."""
+        return self._container.get('security_validator')
+    
+    @property
+    def feed_parser(self):
+        """Get feed parser from container."""
+        return self._container.get('feed_parser')
+    
+    @property
+    def state_manager(self):
+        """Get state manager from container."""
+        return self._container.get('state_manager')
+    
+    def create_deduplicator(self, similarity_threshold: float = 0.8):
+        """Create new deduplicator instance with custom configuration."""
+        from core.deduplication import Deduplicator
+        return Deduplicator(similarity_threshold=similarity_threshold)
+    
+    def create_openai_client(self):
+        """Create new OpenAI client instance."""
+        return self._container.get('openai_client')
+    
+    def create_slack_notifier(self):
+        """Create new Slack notifier instance."""
+        return self._container.get('slack_notifier')
     
     @abstractmethod
     def execute(self, subcommand: str, args: Namespace) -> int:

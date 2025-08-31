@@ -1,0 +1,101 @@
+{
+  "date": "2025-08-31",
+  "created": "2025-08-31T13:55:03.310450",
+  "daily_totals": {
+    "runs": 2,
+    "articles_scraped": 38,
+    "articles_after_dedup": 17,
+    "analyses_completed": 1,
+    "slack_messages_sent": 0,
+    "successful_runs": 1,
+    "failed_runs": 1,
+    "avg_runtime": 3.2924766540527344,
+    "avg_fetch_time": 0.41789984703063965,
+    "avg_analysis_time": 0.003442049026489258
+  },
+  "runs": [
+    {
+      "run_id": "33f48699",
+      "timestamp": "2025-08-31T13:55:03.310395",
+      "command": "news fetch --hours 6",
+      "total_duration": 0.5283336639404297,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1756637702.795339,
+          "end_time": 1756637703.3045352,
+          "duration": 0.5091960430145264,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1756637703.304547,
+          "end_time": 1756637703.305129,
+          "duration": 0.0005819797515869141,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1756637703.305137,
+          "end_time": 1756637703.310385,
+          "duration": 0.005248069763183594,
+          "success": false,
+          "error_message": "cannot import name 'Deduplicator' from 'core.deduplication' (/Users/roi.maishar/dev/Cascade/newser/src/core/deduplication/__init__.py)"
+        }
+      ],
+      "articles_scraped": 19,
+      "articles_after_dedup": 0,
+      "analysis_completed": false,
+      "slack_sent": false,
+      "success": false
+    },
+    {
+      "run_id": "feaa3721",
+      "timestamp": "2025-08-31T13:57:51.654801",
+      "command": "news fetch --hours 6",
+      "total_duration": 4.674548149108887,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1756637866.9840991,
+          "end_time": 1756637867.356351,
+          "duration": 0.3722517490386963,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1756637867.3563619,
+          "end_time": 1756637867.356791,
+          "duration": 0.0004291534423828125,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1756637867.356797,
+          "end_time": 1756637867.37886,
+          "duration": 0.022063016891479492,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1756637871.334995,
+          "end_time": 1756637871.338437,
+          "duration": 0.003442049026489258,
+          "success": true,
+          "error_message": null
+        }
+      ],
+      "articles_scraped": 19,
+      "articles_after_dedup": 17,
+      "analysis_completed": true,
+      "slack_sent": false,
+      "success": true
+    }
+  ],
+  "last_updated": "2025-08-31T13:57:51.655113"
+}

@@ -12,6 +12,7 @@ from typing import Dict, Any
 from .base import BaseCommand
 from core.database import get_database, DatabaseError
 from core.env_loader import validate_database_config
+from core.cache import get_cache_stats, clear_all_caches
 from integrations.openai_client import OpenAIClient
 from integrations.slack_notifier import SlackNotifier
 
@@ -92,6 +93,32 @@ class HealthCommand(BaseCommand):
             print("  ✅ Slack configuration: OK")
         except Exception as e:
             print(f"  ❌ Slack configuration: {e}")
+            overall_healthy = False
+        
+        # Cache status
+        print("\n💾 Cache Status:")
+        try:
+            cache_stats = get_cache_stats()
+            if cache_stats:
+                for cache_name, stats in cache_stats.items():
+                    hit_rate = stats.get('hit_rate', 0)
+                    entries = stats.get('entries', 0)
+                    print(f"  📊 {cache_name.title()} Cache: {entries} entries, {hit_rate:.1f}% hit rate")
+                print("  ✅ Cache system: OK")
+            else:
+                print("  ℹ️  No cache instances active")
+        except Exception as e:
+            print(f"  ⚠️  Cache check failed: {e}")
+            # Don't mark as unhealthy since cache is not critical
+        
+        # Async Feed Parser check
+        print("\n⚡ Async RSS Fetching:")
+        try:
+            from core.async_feed_parser import AsyncFeedParser
+            print("  ✅ Async RSS parser available")
+            print("  ℹ️  Use --async flag with news commands for parallel fetching")
+        except ImportError as e:
+            print(f"  ❌ Async RSS parser not available: {e}")
             overall_healthy = False
         
         # Summary

@@ -14,6 +14,9 @@ import pytz
 from dateutil import parser as date_parser
 import logging
 from dataclasses import dataclass
+import hashlib
+
+from .cache import get_rss_cache
 
 logger = logging.getLogger(__name__)
 
@@ -96,8 +99,9 @@ class FeedParser:
         'walla': 'https://rss.walla.co.il/MainRss'
     }
     
-    def __init__(self, timeout: int = 10):
+    def __init__(self, timeout: int = 10, enable_cache: bool = True):
         self.timeout = timeout
+        self.enable_cache = enable_cache
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (compatible; NewsAggregator/1.0)'
@@ -106,8 +110,26 @@ class FeedParser:
         # Set up timezone for Israel
         self.israel_tz = pytz.timezone('Asia/Jerusalem')
         
+        # Initialize cache
+        if self.enable_cache:
+            self._cache = get_rss_cache()
+        else:
+            self._cache = None
+        
     def fetch_feed(self, url: str) -> Optional[feedparser.FeedParserDict]:
-        """Fetch and parse RSS feed from URL."""
+        """Fetch and parse RSS feed from URL with caching support."""
+        
+        # Generate cache key
+        cache_key = self._generate_cache_key(url)
+        
+        # Try to get from cache first
+        if self._cache:
+            cached_feed = self._cache.get(cache_key)
+            if cached_feed is not None:
+                logger.debug(f"Cache hit for feed: {url}")
+                return cached_feed
+            logger.debug(f"Cache miss for feed: {url}")
+        
         try:
             logger.info(f"Fetching feed from: {url}")
             response = self.session.get(url, timeout=self.timeout)
@@ -118,6 +140,13 @@ class FeedParser:
             
             if feed.bozo:
                 logger.warning(f"Feed parsing warning for {url}: {feed.bozo_exception}")
+            
+            # Cache the result if caching is enabled
+            if self._cache and feed:
+                # Use custom TTL based on feed update frequency
+                ttl = self._get_feed_cache_ttl(url)
+                self._cache.set(cache_key, feed, ttl)
+                logger.debug(f"Cached feed {url} with TTL {ttl}s")
                 
             return feed
             
@@ -127,6 +156,32 @@ class FeedParser:
         except Exception as e:
             logger.error(f"Unexpected error parsing feed {url}: {e}")
             return None
+    
+    def _generate_cache_key(self, url: str) -> str:
+        """Generate cache key for feed URL."""
+        return f"feed:{hashlib.md5(url.encode()).hexdigest()}"
+    
+    def _get_feed_cache_ttl(self, url: str) -> int:
+        """Get appropriate cache TTL for different feeds."""
+        # Israeli news sites update frequently, but we can cache for a reasonable time
+        if 'ynet.co.il' in url:
+            return 600  # 10 minutes for Ynet (very active)
+        elif 'walla.co.il' in url:
+            return 900  # 15 minutes for Walla
+        else:
+            return 1200  # 20 minutes for other feeds
+    
+    def clear_cache(self) -> None:
+        """Clear RSS feed cache."""
+        if self._cache:
+            self._cache.clear()
+            logger.info("Cleared RSS feed cache")
+    
+    def get_cache_stats(self) -> Optional[Dict[str, Any]]:
+        """Get cache statistics."""
+        if self._cache:
+            return self._cache.get_stats()
+        return None
     
     def parse_published_date(self, entry: Dict) -> Optional[datetime]:
         """Parse published date from feed entry with timezone conversion."""
