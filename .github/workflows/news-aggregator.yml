@@ -109,8 +109,8 @@ jobs:
           UPDATES_FLAG="--updates-only"
         fi
         
-        echo "Running: python run.py news analyze --hours $HOURS --slack $UPDATES_FLAG"
-        python run.py news analyze --hours $HOURS --slack $UPDATES_FLAG
+        echo "Running: python run.py news analyze --hours $HOURS $UPDATES_FLAG"
+        python run.py news analyze --hours $HOURS $UPDATES_FLAG
     
     - name: Cleanup old database records
       if: success()
