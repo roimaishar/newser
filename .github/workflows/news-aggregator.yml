@@ -6,22 +6,6 @@ on:
     # Business hours: 6 AM - 11 PM Israel time = 3 AM - 8 PM UTC
     - cron: '0 3-20 * * *'
   workflow_dispatch:
-    inputs:
-      hours:
-        description: 'Hours to look back for articles'
-        required: false
-        default: '1'
-        type: string
-      updates_only:
-        description: 'Show only new/updated items'
-        required: false
-        default: false
-        type: boolean
-      send_to_slack:
-        description: 'Send to Slack'
-        required: false
-        default: true
-        type: boolean
 
 env:
   PYTHON_VERSION: '3.11'
@@ -97,20 +81,9 @@ jobs:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       run: |
-        # Set parameters based on trigger
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          HOURS="${{ github.event.inputs.hours }}"
-          UPDATES_FLAG=""
-          if [ "${{ github.event.inputs.updates_only }}" = "true" ]; then
-            UPDATES_FLAG="--updates-only"
-          fi
-        else
-          HOURS="1"  # For scheduled runs, check last hour
-          UPDATES_FLAG="--updates-only"
-        fi
-        
-        echo "Running: python run.py news analyze --hours $HOURS $UPDATES_FLAG"
-        python run.py news analyze --hours $HOURS $UPDATES_FLAG
+        # Use smart defaults optimized for GitHub Actions
+        echo "Running: python run.py news analyze --updates-only"
+        python run.py news analyze --updates-only
     
     - name: Cleanup old database records
       if: success()
