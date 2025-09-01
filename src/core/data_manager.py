@@ -12,35 +12,11 @@ from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 
-from core.database import DatabaseAdapter, get_database, DatabaseError
+from .database_connection import get_database, DatabaseError
+from .models.metrics import RunRecord
+from .models.analysis import AnalysisRecord
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class RunRecord:
-    """Represents a single execution run."""
-    run_id: str
-    timestamp: datetime
-    hours_window: int
-    command_used: str
-    articles_scraped: int
-    after_dedup: int
-    success: bool
-    processing_time: float = 0.0
-    error_message: Optional[str] = None
-
-
-@dataclass
-class AnalysisRecord:
-    """Represents an analysis result."""
-    run_id: str
-    timestamp: datetime
-    analysis_type: str  # 'thematic' or 'updates'
-    hebrew_result: Any  # Hebrew analysis result object
-    articles_analyzed: int
-    confidence: float
-    processing_time: float
 
 
 class DataManager:

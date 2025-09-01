@@ -14,7 +14,7 @@ import warnings
 from typing import List
 
 # Import formatters from the new location for backward compatibility
-from core.formatters import format_article, articles_to_dict, format_hebrew_analysis
+from core.formatting import format_article, articles_to_dict, format_hebrew_analysis
 
 # Import CLI router for delegation
 from cli_router import CLIRouter

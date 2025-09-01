@@ -12,8 +12,9 @@ from .state_service import StateService
 from .metrics_service import MetricsService
 from .database_facade import DatabaseFacade
 
-# Re-export items from the renamed database_adapter module
-from ..database_adapter import get_database, DatabaseAdapter
+# Re-export items from the new adapter system
+from ..adapters.connection import get_database
+from ..adapters.legacy_adapter import DatabaseAdapter
 
 __all__ = [
     'ConnectionManager',

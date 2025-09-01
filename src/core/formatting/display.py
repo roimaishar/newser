@@ -7,8 +7,8 @@ Extracted from main.py to eliminate circular imports and improve modularity.
 
 from datetime import datetime
 from typing import List
-from core.feed_parser import Article
-from core.hebrew_analyzer import HebrewAnalysisResult
+from ..models.article import Article
+from ..models.analysis import HebrewAnalysisResult
 
 
 def format_article(article: Article) -> str:

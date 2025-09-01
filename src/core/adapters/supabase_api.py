@@ -14,8 +14,8 @@ from dataclasses import asdict
 
 from supabase import create_client, Client
 
-from core.feed_parser import Article
-from core.env_loader import get_env_var
+from ..env_loader import get_env_var
+from ..models.article import Article
 
 logger = logging.getLogger(__name__)
 

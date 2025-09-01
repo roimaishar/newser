@@ -286,8 +286,6 @@ Return ONLY valid JSON:
     "full_message": "📰 **עובדות עיקריות:**\\n[Key facts]\\n\\n**הקשר ומשמעות:**\\n[Context and analysis]"
 }}"""
 
-
-
 # Convenience aliases
 SYSTEM_PROMPT = NewsAnalysisPrompts.SYSTEM_PROMPT
 get_analysis_prompt = NewsAnalysisPrompts.get_analysis_prompt

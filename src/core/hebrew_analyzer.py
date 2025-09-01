@@ -17,41 +17,13 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 
-from .feed_parser import Article
+from .models.article import Article
+from .models.analysis import HebrewAnalysisResult
 from .state_manager import StateManager, KnownItem
 from .prompts import NewsAnalysisPrompts
 from .json_validator import validate_hebrew_analysis
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class HebrewAnalysisResult:
-    """Results from Hebrew news analysis with novelty detection."""
-    has_new_content: bool
-    analysis_type: str  # "thematic" or "updates"
-    
-    # Core analysis
-    summary: str
-    key_topics: List[str]
-    sentiment: str
-    insights: List[str]
-    
-    # Novelty detection (for updates mode)
-    new_events: List[Dict[str, Any]]
-    updated_events: List[Dict[str, Any]]
-    bulletins: str
-    
-    # Metadata
-    articles_analyzed: int
-    confidence: float
-    analysis_timestamp: datetime
-    
-    def __post_init__(self):
-        """Validate and clean data."""
-        self.confidence = max(0.0, min(1.0, self.confidence))
-        self.summary = self.summary.strip()
-        self.bulletins = self.bulletins.strip()
 
 
 class HebrewNewsAnalyzer:

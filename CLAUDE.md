@@ -60,6 +60,57 @@ uv pip install --system -r requirements.lock
 ✅ uv package manager for faster dependency resolution
 ⏳ Security improvements needed before production
 
+## Core Refactoring Plan (December 2024)
+
+### **CRITICAL: Modular Architecture Refactoring**
+
+**Current Issues:**
+- 3 overlapping database implementations (database_adapter.py, supabase_adapter.py, database/ module)
+- Hardcoded RSS feeds preventing easy source addition
+- Mixed formatting responsibilities (formatters.py + smart_formatter.py)
+- Legacy code and circular import issues
+
+**Phase 1: Critical Foundation (7-9 hours)**
+1. **Database Layer Consolidation** (2-3h) ⭐⭐⭐⭐⭐
+   - Move `supabase_adapter.py` → `src/core/adapters/supabase_api.py`
+   - Move `database_adapter.py` → `src/core/adapters/legacy_adapter.py`
+   - Consolidate connection logic in `src/core/database/`
+
+2. **News Sources Architecture** (3-4h) ⭐⭐⭐⭐⭐
+   - Create `src/core/sources/` with pluggable architecture
+   - Extract RSS logic: `sources/rss/ynet.py`, `sources/rss/walla.py`
+   - Enable easy addition of new sources (Twitter, Telegram, etc.)
+   - Create source registry for dynamic discovery
+
+3. **Formatting Layer Consolidation** (2h) ⭐⭐⭐⭐
+   - Merge `formatters.py` + `smart_formatter.py` → `src/core/formatting/`
+   - Separate display vs notification formatting
+   - Create reusable templates
+
+**Phase 2: Quality & Structure (7-10 hours)**
+4. **Legacy Code Removal** (1-2h) ⭐⭐⭐
+5. **Data Models Separation** (2-3h) ⭐⭐⭐⭐ - Move Article to `src/core/models/`
+6. **Analysis Pipeline** (4-5h) ⭐⭐⭐⭐ - Restructure `src/core/analysis/hebrew/`
+
+**Phase 3: Advanced Features (7-10 hours)**
+7. **Notification System** (3-4h) ⭐⭐⭐⭐ - Create `src/core/notifications/`
+8. **Caching Strategy** (2-3h) ⭐⭐⭐
+9. **Error Handling** (2-3h) ⭐⭐⭐
+
+**Target Architecture:**
+```
+src/core/
+├── adapters/          # Database implementations
+├── sources/           # Pluggable news sources
+├── models/           # Data structures (Article, Analysis, etc.)
+├── analysis/         # AI analysis pipeline
+├── formatting/       # Display and notification formatting
+├── notifications/    # Smart notification system
+└── database/         # Core database layer (existing)
+```
+
+**Benefits:** Easy source addition, plugin-based analysis, better testability, production readiness
+
 ## Development Notes
 
 The application currently uses relative imports within `src/` directory. The `run.py` script handles Python path setup to allow running from project root.

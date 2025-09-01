@@ -9,9 +9,10 @@ from typing import List
 from datetime import datetime
 
 from .base import BaseCommand
-from core.feed_parser import Article
+from core.models.article import Article
 from core.hebrew_analyzer import HebrewNewsAnalyzer
-from core.data_manager import RunRecord, AnalysisRecord
+from core.models.metrics import RunRecord
+from core.models.analysis import AnalysisRecord
 
 logger = logging.getLogger(__name__)
 
@@ -449,7 +450,7 @@ class NewsCommand(BaseCommand):
         print(f"📰 כתבות: {len(articles)} | 🎯 מצב: {mode_name}")
         
         # Show Hebrew analysis
-        from core.formatters import format_hebrew_analysis
+        from core.formatting import format_hebrew_analysis
         print(format_hebrew_analysis(hebrew_result))
         
         # In updates-only mode, don't show all articles if no new content

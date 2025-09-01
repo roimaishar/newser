@@ -10,12 +10,12 @@ import logging
 import os
 from typing import Optional
 
-from .database.database_facade import DatabaseFacade
-from .database import DatabaseError
+from ..database.database_facade import DatabaseFacade
+from ..database import DatabaseError
 
 # Try to import API adapter as fallback
 try:
-    from .supabase_adapter import get_api_database, SupabaseApiAdapter, SupabaseApiError
+    from .supabase_api import get_api_database, SupabaseApiAdapter, SupabaseApiError
     HAS_API_ADAPTER = True
 except ImportError:
     HAS_API_ADAPTER = False
@@ -39,7 +39,7 @@ class DatabaseAdapter:
             config: Configuration object. If None, gets from container.
         """
         if config is None:
-            from core.container import get_config
+            from ..container import get_config
             config = get_config()
         
         self._facade = DatabaseFacade(config)
