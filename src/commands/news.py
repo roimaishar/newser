@@ -121,27 +121,61 @@ class NewsCommand(BaseCommand):
                         hebrew_result = None
                         self.metrics.record_stat("analysis_completed", False)
             
-            # Send to Slack if requested
-            if getattr(args, 'slack', False) and articles:
-                with self.metrics.time_operation("slack_notification"):
+            # Smart Notification System (new 3-bucket approach) - default enabled unless --no-slack
+            if not getattr(args, 'no_slack', False) and articles:
+                with self.metrics.time_operation("smart_notification"):
                     try:
-                        slack_client = self.create_slack_notifier()
-                        article_dicts = [article.to_dict() for article in articles]
+                        from core.smart_notifier import create_smart_notifier
                         
-                        success = slack_client.send_news_summary(
-                            article_dicts, 
-                            hebrew_result=hebrew_result
+                        # Create smart notifier
+                        smart_notifier = create_smart_notifier(
+                            state_manager=self.state_manager,
+                            openai_client=self.create_openai_client()
                         )
                         
-                        self.metrics.record_stat("slack_sent", success)
-                        if success:
-                            self.logger.info("Successfully sent to Slack")
+                        # Convert articles to dicts for processing
+                        article_dicts = [article.to_dict() for article in articles]
+                        
+                        # Get Slack client for sending
+                        slack_client = self.create_slack_notifier()
+                        
+                        # Process with smart notification system
+                        decision = smart_notifier.process_news_for_notifications(
+                            fresh_articles=article_dicts,
+                            slack_client=slack_client,
+                            push_client=None  # No push client integration yet
+                        )
+                        
+                        if decision:
+                            self.metrics.record_stat("smart_notification_decision", decision.should_notify)
+                            self.metrics.record_stat("notification_fresh_count", decision.fresh_articles_count)
+                            self.metrics.record_stat("notification_since_last_count", decision.since_last_count)
+                            
+                            if decision.should_notify:
+                                self.logger.info(f"Smart notification approved: {decision.compact_push}")
+                            else:
+                                self.logger.info("Smart notification system decided to skip notification")
                         else:
-                            self.logger.error("Failed to send to Slack")
+                            self.logger.error("Smart notification analysis failed")
+                            self.metrics.record_stat("smart_notification_decision", False)
                             
                     except Exception as e:
-                        self.logger.error(f"Slack notification failed: {e}")
-                        self.metrics.record_stat("slack_sent", False)
+                        self.logger.error(f"Smart notification failed: {e}")
+                        self.metrics.record_stat("smart_notification_decision", False)
+                        
+                        # Fallback to old notification system
+                        try:
+                            slack_client = self.create_slack_notifier()
+                            article_dicts = [article.to_dict() for article in articles]
+                            
+                            success = slack_client.send_news_summary(
+                                article_dicts, 
+                                hebrew_result=hebrew_result
+                            )
+                            self.metrics.record_stat("slack_sent", success)
+                            
+                        except Exception as fallback_e:
+                            self.logger.error(f"Fallback notification also failed: {fallback_e}")
             
             # Store analysis record if we have results
             if hebrew_result:
@@ -194,7 +228,7 @@ class NewsCommand(BaseCommand):
         command_str = f"news analyze --hours {args.hours}"
         if getattr(args, 'updates_only', False):
             command_str += " --updates-only"
-        if getattr(args, 'slack', False):
+        if not getattr(args, 'no_slack', False):
             command_str += " --slack"
             
         self.metrics.start_run(run_id, command_str)
@@ -232,8 +266,8 @@ class NewsCommand(BaseCommand):
                     hebrew_result = None
                     self.metrics.record_stat("analysis_completed", False)
             
-            # Send to Slack if requested
-            if getattr(args, 'slack', False) and hebrew_result:
+            # Send to Slack (default enabled unless --no-slack)
+            if not getattr(args, 'no_slack', False) and hebrew_result:
                 with self.metrics.time_operation("slack_notification"):
                     try:
                         slack_client = self.create_slack_notifier()

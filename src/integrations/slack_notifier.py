@@ -345,3 +345,67 @@ class SlackNotifier:
             True if sent successfully, False otherwise
         """
         return self.send_message(text, channel)
+    
+    def send_direct_message(self, message: str, username: str = "Smart News Bot") -> bool:
+        """
+        Send a direct message (for smart notification system).
+        
+        Args:
+            message: Message text (can be LLM-generated full message with markdown)
+            username: Bot username
+            
+        Returns:
+            True if sent successfully, False otherwise
+        """
+        if len(message) > self.max_message_length:
+            message = message[:self.max_message_length - 3] + "..."
+        
+        # Check if message has structured format (with ** markdown)
+        if "**עובדות עיקריות:**" in message:
+            # Create structured Slack blocks for better formatting
+            sections = message.split("**הקשר ומשמעות:**")
+            facts_section = sections[0].replace("📰 **עובדות עיקריות:**", "").strip()
+            context_section = sections[1].strip() if len(sections) > 1 else ""
+            
+            blocks = [
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "📰 חדשות מיידיות",
+                        "emoji": True
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*עובדות עיקריות:*\n{facts_section}"
+                    }
+                }
+            ]
+            
+            if context_section:
+                blocks.append({
+                    "type": "section", 
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*הקשר ומשמעות:*\n{context_section}"
+                    }
+                })
+            
+            payload = {
+                "blocks": blocks,
+                "username": username,
+                "icon_emoji": ":newspaper:"
+            }
+        else:
+            # Fallback to simple text format
+            payload = {
+                "text": message,
+                "username": username,
+                "icon_emoji": ":newspaper:",
+                "mrkdwn": True  # Enable markdown formatting
+            }
+        
+        return self._send_webhook_message(payload)

@@ -73,23 +73,23 @@ class CLIRouter:
         
         # Fetch subcommand
         fetch_parser = news_subparsers.add_parser('fetch', help='Fetch and analyze news articles from RSS feeds')
-        fetch_parser.add_argument('--hours', type=int, default=24, help='Hours to look back (default: 24)')
+        fetch_parser.add_argument('--hours', type=int, default=1, help='Hours to look back (default: 1 for GitHub Actions)')
         fetch_parser.add_argument('--similarity', type=float, default=0.8, help='Similarity threshold for deduplication (default: 0.8)')
         fetch_parser.add_argument('--no-dedupe', action='store_true', help='Skip deduplication')
         fetch_parser.add_argument('--no-analysis', action='store_true', help='Skip Hebrew AI analysis (analysis is now default)')
         fetch_parser.add_argument('--updates-only', action='store_true', help='Show only new/updated content')
-        fetch_parser.add_argument('--slack', action='store_true', help='Send results to Slack')
+        fetch_parser.add_argument('--no-slack', action='store_true', help='Skip Slack notifications (Slack is default for GitHub Actions)')
         fetch_parser.add_argument('--async', dest='async_fetch', action='store_true', help='Use async RSS fetching for better performance')
         fetch_parser.add_argument('--verbose', action='store_true', help='Verbose output')
         
         # Analyze subcommand
         analyze_parser = news_subparsers.add_parser('analyze', help='Analyze articles with Hebrew AI analysis')
-        analyze_parser.add_argument('--hours', type=int, default=24, help='Hours to look back (default: 24)')
+        analyze_parser.add_argument('--hours', type=int, default=1, help='Hours to look back (default: 1 for GitHub Actions)')
         analyze_parser.add_argument('--similarity', type=float, default=0.8, help='Similarity threshold for deduplication (default: 0.8)')
         analyze_parser.add_argument('--no-dedupe', action='store_true', help='Skip deduplication')
         analyze_parser.add_argument('--async', dest='async_fetch', action='store_true', help='Use async RSS fetching for better performance')
         analyze_parser.add_argument('--updates-only', action='store_true', help='Show only new/updated content')
-        analyze_parser.add_argument('--slack', action='store_true', help='Send results to Slack')
+        analyze_parser.add_argument('--no-slack', action='store_true', help='Skip Slack notifications (Slack is default for GitHub Actions)')
         analyze_parser.add_argument('--state-file', default=None, help='[DEPRECATED] State now stored in database')
         analyze_parser.add_argument('--verbose', action='store_true', help='Verbose output')
         
@@ -211,13 +211,14 @@ class CLIRouter:
         """Get examples text for help."""
         return """
 Examples:
-  # News fetching (now includes AI analysis by default)
-  python run.py news fetch --hours 6 --verbose
-  python run.py news fetch --hours 24 --async --slack  # With Slack notification
-  python run.py news fetch --hours 6 --no-analysis     # Skip AI analysis
+  # Default GitHub Actions mode (1 hour, Slack enabled, AI analysis)
+  python run.py news fetch
+  python run.py news analyze
   
-  # Legacy analyze command (for compatibility)
-  python run.py news analyze --hours 24 --slack --async
+  # Manual runs with custom settings
+  python run.py news fetch --hours 6 --verbose --no-slack  # Local testing
+  python run.py news fetch --hours 24 --async              # Longer timeframe
+  python run.py news fetch --no-analysis                   # Skip AI analysis
   
   # Other commands
   python run.py state stats

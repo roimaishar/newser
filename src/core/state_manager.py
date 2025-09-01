@@ -140,3 +140,74 @@ class StateManager:
         """Check if an item is already known."""
         known_hashes = self.get_known_items(item_type)
         return item_hash in known_hashes
+    
+    def get_last_notification_timestamp(self) -> Optional[datetime]:
+        """Get the timestamp of the last notification sent."""
+        try:
+            # Use known_items mechanism with special type for notification state
+            notification_hashes = self.db.get_known_items('notification_timestamp')
+            if not notification_hashes:
+                return None
+            
+            # The "hash" is actually a timestamp string for this special type
+            # Get the most recent one
+            timestamps = []
+            for hash_str in notification_hashes:
+                try:
+                    timestamp = datetime.fromisoformat(hash_str.replace('Z', '+00:00'))
+                    timestamps.append(timestamp)
+                except Exception:
+                    continue
+            
+            return max(timestamps) if timestamps else None
+            
+        except Exception as e:
+            logger.error(f"Failed to get last notification timestamp: {e}")
+            return None
+    
+    def update_last_notification_timestamp(self, timestamp: Optional[datetime] = None) -> None:
+        """Update the last notification timestamp."""
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+        
+        try:
+            # Store as ISO string in the known_items system
+            timestamp_str = timestamp.isoformat()
+            self.db.update_known_items([timestamp_str], 'notification_timestamp')
+            logger.info(f"Updated last notification timestamp to {timestamp_str}")
+            
+        except Exception as e:
+            logger.error(f"Failed to update notification timestamp: {e}")
+    
+    def get_articles_since_timestamp(self, since_timestamp: datetime, hours_limit: int = 24) -> List[Dict[str, Any]]:
+        """Get articles from database since a specific timestamp, within hours limit."""
+        try:
+            # Get recent articles from database
+            all_recent = self.db.get_recent_articles(hours_limit)
+            
+            # Filter to only those after the timestamp
+            filtered = []
+            for article in all_recent:
+                # Convert article timestamp for comparison
+                article_time = None
+                if hasattr(article, 'created_at'):
+                    article_time = article.created_at
+                elif isinstance(article, dict) and 'created_at' in article:
+                    article_time = article['created_at']
+                elif hasattr(article, 'published_date'):
+                    article_time = article.published_date
+                elif isinstance(article, dict) and 'published_date' in article:
+                    article_time = article['published_date']
+                
+                if article_time and article_time > since_timestamp:
+                    # Convert to dict if needed
+                    if hasattr(article, 'to_dict'):
+                        filtered.append(article.to_dict())
+                    elif isinstance(article, dict):
+                        filtered.append(article)
+            
+            return filtered
+            
+        except Exception as e:
+            logger.error(f"Failed to get articles since timestamp: {e}")
+            return []
