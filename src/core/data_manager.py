@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class DataManager:
     """Manages data persistence using PostgreSQL database."""
     
-    def __init__(self, db: Optional[DatabaseAdapter] = None):
+    def __init__(self, db: Optional[Any] = None):
         """Initialize DataManager with database adapter."""
         self.db = db or get_database()
         logger.info("DataManager initialized with database adapter")
