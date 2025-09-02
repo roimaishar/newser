@@ -36,11 +36,11 @@ class NotificationFormatter:
             # Direct headlines approach - maximize space for headlines
             top_headlines = []
             for article in articles[:3]:
-                title = article.get('title', '')[:50]  # Longer titles since we removed other info
+                title = article.get('title', '')[:70]  # Even longer titles since we removed time/source
                 if 'פיגוע' in title or 'רצח' in title:
                     top_headlines.append(f"🚨 {title}")
                 else:
-                    top_headlines.append(title)  # Remove 📰 emoji to save space
+                    top_headlines.append(title)  # Remove all prefixes to save space
             return "\n".join(top_headlines)
         
         elif style == "topic":
@@ -57,7 +57,7 @@ class NotificationFormatter:
             urgent_articles = [a for a in articles if any(kw in a.get('title', '') for kw in urgent_keywords)]
             
             if urgent_articles:
-                title = urgent_articles[0].get('title', '')[:60]  # Longer title
+                title = urgent_articles[0].get('title', '')[:90]  # Much longer title without time/source
                 other_count = len(articles) - 1
                 return f"🚨 {title}" + (f" (+{other_count})" if other_count > 0 else "")
             else:
