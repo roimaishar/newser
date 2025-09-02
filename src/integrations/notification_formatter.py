@@ -87,8 +87,7 @@ class NotificationFormatter:
         headlines = []
         for i, article in enumerate(articles, 1):
             title = article.get('title', '')[:80]
-            source = article.get('source', '').upper()
-            headlines.append(f"{i}️⃣ {title} ({source})")
+            headlines.append(f"{i}️⃣ {title}")
         
         headlines_text = "\n".join(headlines)
         
@@ -97,7 +96,7 @@ class NotificationFormatter:
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": f"📰 חדשות ישראל | {time_str} | {count} כתבות",
+                    "text": f"📰 חדשות ({count} כתבות)",
                     "emoji": True
                 }
             },
@@ -250,7 +249,7 @@ class NotificationFormatter:
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"🇮🇱 *חדשות {time_str}* | {count} כתבות | {main_topic}\n\n*Top 3:*\n{headlines_text}{remaining_text}"
+                    "text": f"🇮🇱 *חדשות* | {count} כתבות | {main_topic}\n\n*Top 3:*\n{headlines_text}{remaining_text}"
                 },
                 "accessory": {
                     "type": "button",
@@ -411,7 +410,7 @@ class NotificationFormatter:
         urgency = "גבוהה" if count >= 5 else "בינונית" if count >= 3 else "נמוכה"
         
         main_message = {
-            "text": f"🚨 *חדשות ישראל* | {time_str} | {count} כתבות חדשות\n\n🔥 *הכי חם עכשיו:*\n{main_topics}\n\n💭 *המסקנה:* {hebrew_result.summary[:100] if hebrew_result else 'עדכונים שוטפים'}...\n📊 *רמת דאגה:* {urgency}\n\n👇 פרטים בתגובות",
+            "text": f"🚨 *חדשות חמות* ({count} כתבות)\n\n🔥 *הכי חם עכשיו:*\n{main_topics}\n\n💭 *המסקנה:* {hebrew_result.summary[:100] if hebrew_result else 'עדכונים שוטפים'}...\n📊 *רמת דאגה:* {urgency}\n\n👇 פרטים בתגובות",
             "username": "Israeli News",
             "icon_emoji": ":israel:"
         }
@@ -431,7 +430,7 @@ class NotificationFormatter:
             title = article.get('title', '')[:80]
             source = article.get('source', '').upper()
             link = article.get('link', '')
-            articles_text += f"{i}. *{title}* ({source})\n   {link}\n\n"
+            articles_text += f"{i}. *{title}*\n   {link}\n\n"
         
         articles_reply = {
             "text": f"📰 *רשימת כתבות*\n\n{articles_text}",

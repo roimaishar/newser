@@ -112,7 +112,7 @@ class SlackNotifier:
         # Choose header based on analysis type
         if hebrew_result:
             mode_text = "עדכונים בלבד" if hebrew_result.analysis_type == "updates" else "ניתוח כללי"
-            header_text = f"🇮🇱 חדשות ישראל - {len(articles)} כתבות"
+            header_text = f"🇮🇱 חדשות ({len(articles)} כתבות)"
             analysis_text = f"📊 {mode_text} | 🎯 ודאות: {hebrew_result.confidence:.1f}"
         else:
             header_text = f"🇮🇱 Israeli News Update - {len(articles)} Articles"
@@ -195,10 +195,6 @@ class SlackNotifier:
             
             # Create article block
             article_text = f"*{i}. {title}*"
-            if time_str:
-                article_text += f"\n🕐 {time_str} | 📰 {source}"
-            else:
-                article_text += f"\n📰 {source}"
             
             if link:
                 article_text += f"\n<{link}|קרא עוד>"
