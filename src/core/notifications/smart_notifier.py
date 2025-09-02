@@ -15,9 +15,9 @@ from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 
-from .state_manager import StateManager
-from .notification_scheduler import NotificationScheduler, format_time_since_last_notification
-from .prompts import get_notification_prompt
+from ..state_manager import StateManager
+from .scheduler import NotificationScheduler, format_time_since_last_notification
+from ..analysis.hebrew.prompts import get_notification_prompt
 # JSON validation not needed for this implementation
 
 logger = logging.getLogger(__name__)

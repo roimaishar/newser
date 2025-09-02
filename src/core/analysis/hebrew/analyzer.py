@@ -17,11 +17,11 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 
-from .models.article import Article
-from .models.analysis import HebrewAnalysisResult
-from .state_manager import StateManager, KnownItem
+from ...models.article import Article
+from ...models.analysis import HebrewAnalysisResult
+from ...state_manager import StateManager, KnownItem
 from .prompts import NewsAnalysisPrompts
-from .json_validator import validate_hebrew_analysis
+from ...json_validator import validate_hebrew_analysis
 
 logger = logging.getLogger(__name__)
 

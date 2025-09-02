@@ -10,7 +10,7 @@ from datetime import datetime
 
 from .base import BaseCommand
 from core.models.article import Article
-from core.hebrew_analyzer import HebrewNewsAnalyzer
+from core.analysis.hebrew.analyzer import HebrewNewsAnalyzer
 from core.models.metrics import RunRecord
 from core.models.analysis import AnalysisRecord
 
@@ -126,7 +126,7 @@ class NewsCommand(BaseCommand):
             if not getattr(args, 'no_slack', False) and articles:
                 with self.metrics.time_operation("smart_notification"):
                     try:
-                        from core.smart_notifier import create_smart_notifier
+                        from core.notifications.smart_notifier import create_smart_notifier
                         
                         # Create smart notifier
                         smart_notifier = create_smart_notifier(

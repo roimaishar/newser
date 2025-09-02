@@ -13,7 +13,7 @@ from typing import List, Dict, Optional, Any
 from datetime import datetime
 import requests
 
-from .notification_formatter import NotificationFormatter
+from integrations.notification_formatter import NotificationFormatter
 
 logger = logging.getLogger(__name__)
 
