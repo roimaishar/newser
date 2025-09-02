@@ -87,7 +87,7 @@ class PushNotifier:
         payload = {
             "app_id": self.app_id,
             "contents": {"he": message, "en": message},
-            "headings": {"he": "חדשות ישראל", "en": "Israel News"},
+            "headings": {"he": "", "en": ""},
             "priority": priority_map.get(urgency, 5),
             "included_segments": segments or ["All"],
             "android_channel_id": "news_updates",
@@ -144,7 +144,7 @@ class PushNotifier:
             "to": "/topics/news_updates",  # Default topic
             "priority": priority,
             "notification": {
-                "title": "חדשות ישראל",
+                "title": "",
                 "body": message,
                 "icon": "ic_news",
                 "sound": "urgent_news" if urgency in ["critical", "high"] else "default",

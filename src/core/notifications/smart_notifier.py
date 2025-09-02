@@ -250,7 +250,9 @@ class SmartNotifier:
             # Send push notification (would need proper push service)
             if push_client:
                 try:
-                    success = push_client.send_push(decision.compact_push)
+                    # Create a mock article with just the compact message for push notification
+                    mock_articles = [{"title": decision.compact_push, "source": "", "published": datetime.now()}]
+                    success = push_client.send_news_notification(mock_articles, None, "headlines")
                     if success:
                         logger.info("Successfully sent push notification")
                         sent_any = True
