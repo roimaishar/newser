@@ -11,7 +11,7 @@ from typing import List, Dict, Any
 from datetime import datetime, timedelta
 
 from .base import BaseCommand
-from ..integrations.slack_notifier import SlackNotifier
+from ..core.notifications.channels.slack import SlackNotifier
 from ..integrations.push_notifier import PushNotifier
 from ..integrations.notification_formatter import NotificationFormatter
 from ..core.data_manager import DataManager

@@ -14,7 +14,7 @@ from core.database import get_database, DatabaseError
 from core.env_loader import validate_database_config
 from core.cache import get_cache_stats, clear_all_caches
 from integrations.openai_client import OpenAIClient
-from integrations.slack_notifier import SlackNotifier
+from core.notifications.channels.slack import SlackNotifier
 
 logger = logging.getLogger(__name__)
 

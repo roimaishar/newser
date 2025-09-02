@@ -169,7 +169,7 @@ class IntegrationsCommand(BaseCommand):
     def _test_slack(self) -> bool:
         """Test Slack connection."""
         try:
-            from integrations.slack_notifier import SlackNotifier
+            from core.notifications.channels.slack import SlackNotifier
             client = SlackNotifier()
             
             # Test connection (without sending message)
@@ -185,7 +185,7 @@ class IntegrationsCommand(BaseCommand):
     def _send_test_slack_message(self, message: str) -> int:
         """Send a test message to Slack."""
         try:
-            from integrations.slack_notifier import SlackNotifier
+            from core.notifications.channels.slack import SlackNotifier
             client = SlackNotifier()
             
             success = client.send_simple_message(f"🧪 Test: {message}")

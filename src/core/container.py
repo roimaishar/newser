@@ -228,7 +228,7 @@ def _setup_default_services(container: Container) -> None:
         return OpenAIClient(api_key=config.integrations.openai_api_key)
     
     def create_slack_notifier():
-        from integrations.slack_notifier import SlackNotifier
+        from core.notifications.channels.slack import SlackNotifier
         config = create_config()
         if not config.has_slack():
             raise ValueError("Slack configuration not found")
