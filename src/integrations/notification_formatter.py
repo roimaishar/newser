@@ -93,40 +93,11 @@ class NotificationFormatter:
         
         blocks = [
             {
-                "type": "header",
-                "text": {
-                    "type": "plain_text",
-                    "text": f"📰 חדשות ({count} כתבות)",
-                    "emoji": True
-                }
-            },
-            {
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"*🔥 כותרות עיקריות:*\n{headlines_text}"
+                    "text": headlines_text
                 }
-            },
-            {
-                "type": "actions",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {"type": "plain_text", "text": "📊 ניתוח"},
-                        "action_id": "show_analysis",
-                        "style": "primary"
-                    },
-                    {
-                        "type": "button",
-                        "text": {"type": "plain_text", "text": "🔗 קישורים"},
-                        "action_id": "show_links"
-                    },
-                    {
-                        "type": "button",
-                        "text": {"type": "plain_text", "text": "📈 מגמות"},
-                        "action_id": "show_trends"
-                    }
-                ]
             }
         ]
         
@@ -249,13 +220,7 @@ class NotificationFormatter:
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"🇮🇱 *חדשות* | {count} כתבות | {main_topic}\n\n*Top 3:*\n{headlines_text}{remaining_text}"
-                },
-                "accessory": {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "הצג הכל"},
-                    "action_id": "expand_all",
-                    "style": "primary"
+                    "text": f"{headlines_text}{remaining_text}"
                 }
             }
         ]
@@ -301,18 +266,10 @@ class NotificationFormatter:
         
         blocks = [
             {
-                "type": "header",
-                "text": {
-                    "type": "plain_text",
-                    "text": f"📬 דייג'סט חדשות - {time_str}",
-                    "emoji": True
-                }
-            },
-            {
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"┌─ *הנושא המרכזי* ─┐\n│ 🎯 {main_topic} │\n│ 📊 {count} כתבות חדשות │\n└─────────────────┘"
+                    "text": f"🎯 {main_topic}"
                 }
             }
         ]
@@ -354,37 +311,6 @@ class NotificationFormatter:
                 }
             })
         
-        # Action buttons
-        blocks.append({
-            "type": "actions",
-            "elements": [
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "📰 כל הכתבות"
-                    },
-                    "action_id": "show_all_articles",
-                    "style": "primary"
-                },
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "📈 מגמות"
-                    },
-                    "action_id": "show_trends"
-                },
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "⚙️ הגדרות"
-                    },
-                    "action_id": "notification_settings"
-                }
-            ]
-        })
         
         return {
             "blocks": blocks,
@@ -416,13 +342,6 @@ class NotificationFormatter:
         }
         messages.append(main_message)
         
-        # Thread reply 1: Full analysis
-        if hebrew_result:
-            analysis_reply = {
-                "text": f"🎯 *ניתוח מעמיק*\n\n{hebrew_result.summary}\n\n🏷️ *נושאים:* {', '.join(hebrew_result.key_topics) if hebrew_result.key_topics else 'כללי'}",
-                "thread_ts": "main_message_ts"  # Will be replaced with actual timestamp
-            }
-            messages.append(analysis_reply)
         
         # Thread reply 2: Articles list
         articles_text = ""
