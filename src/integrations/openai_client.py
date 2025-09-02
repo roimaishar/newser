@@ -17,7 +17,7 @@ from dataclasses import dataclass
 import requests
 from datetime import datetime
 
-from core.prompts import NewsAnalysisPrompts
+from core.analysis.hebrew.prompts import NewsAnalysisPrompts
 
 logger = logging.getLogger(__name__)
 
