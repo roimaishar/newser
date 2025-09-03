@@ -106,9 +106,10 @@ class NewsCommand(BaseCommand):
                         logger.info("Hebrew analysis completed successfully")
                         
                     except Exception as e:
-                        self.logger.warning(f"Hebrew analysis failed (continuing without it): {e}")
-                        hebrew_result = None
+                        self.logger.error(f"Hebrew analysis failed: {e}")
                         self.metrics.record_stat("analysis_completed", False)
+                        # Re-raise instead of continuing without analysis
+                        raise RuntimeError(f"LLM analysis is required but failed: {str(e)}") from e
             
             # Smart Notification System (new 3-bucket approach) - default enabled unless --no-slack
             if not getattr(args, 'no_slack', False) and articles:
@@ -252,8 +253,9 @@ class NewsCommand(BaseCommand):
                     
                 except Exception as e:
                     self.logger.error(f"Hebrew analysis failed: {e}")
-                    hebrew_result = None
                     self.metrics.record_stat("analysis_completed", False)
+                    # Re-raise instead of continuing without analysis
+                    raise RuntimeError(f"LLM analysis is required but failed: {str(e)}") from e
             
             # Send to Slack (default enabled unless --no-slack)
             if not getattr(args, 'no_slack', False) and hebrew_result:

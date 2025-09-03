@@ -142,20 +142,8 @@ class HebrewNewsAnalyzer:
             
         except Exception as e:
             logger.error(f"Hebrew thematic analysis failed: {e}")
-            return HebrewAnalysisResult(
-                has_new_content=False,
-                analysis_type="thematic",
-                summary=f"שגיאה בניתוח: {str(e)}",
-                key_topics=[],
-                sentiment="ניטרלי",
-                insights=[],
-                new_events=[],
-                updated_events=[],
-                bulletins="",
-                articles_analyzed=len(articles),
-                confidence=0.0,
-                analysis_timestamp=datetime.now()
-            )
+            # Re-raise the exception instead of returning fallback
+            raise RuntimeError(f"LLM thematic analysis failed: {str(e)}") from e
     
     def analyze_articles_with_novelty(self, articles: List[Article], hours: int = 12) -> HebrewAnalysisResult:
         """
@@ -260,20 +248,8 @@ class HebrewNewsAnalyzer:
             
         except Exception as e:
             logger.error(f"Hebrew novelty analysis failed: {e}")
-            return HebrewAnalysisResult(
-                has_new_content=False,
-                analysis_type="updates",
-                summary=f"שגיאה בניתוח חדשנות: {str(e)}",
-                key_topics=[],
-                sentiment="ניטרלי",
-                insights=[],
-                new_events=[],
-                updated_events=[],
-                bulletins="",
-                articles_analyzed=len(articles),
-                confidence=0.0,
-                analysis_timestamp=datetime.now()
-            )
+            # Re-raise the exception instead of returning fallback
+            raise RuntimeError(f"LLM novelty analysis failed: {str(e)}") from e
     
     def _parse_ai_response(self, content: str) -> Dict[str, Any]:
         """Parse AI response, handling common JSON formatting issues."""
@@ -289,17 +265,8 @@ class HebrewNewsAnalyzer:
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse AI response as JSON: {e}")
             logger.debug(f"Raw response: {content}")
-            
-            # Return safe fallback
-            return {
-                "summary": "תגובת הבינה המלאכותית לא הייתה תקינה",
-                "key_topics": [],
-                "sentiment": "ניטרלי",
-                "insights": ["שגיאה בפענוח התגובה"],
-                "has_new": False,
-                "items": [],
-                "bulletins_he": ""
-            }
+            # Re-raise the exception instead of returning fallback
+            raise RuntimeError(f"LLM returned invalid JSON: {str(e)}") from e
     
     def _update_state_from_analysis(self, items: List[Dict[str, Any]]) -> None:
         """Update state manager with new/updated events from analysis."""

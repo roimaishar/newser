@@ -60,10 +60,20 @@ class OpenAIClient:
         """Make a request to OpenAI API."""
         url = f"{self.base_url}/{endpoint}"
         
+        # Log the API call for debugging
+        logger.info(f"Making OpenAI API call to {url}")
+        logger.debug(f"Request data: {json.dumps(data, indent=2)}")
+        
         try:
             response = requests.post(url, headers=self.headers, json=data, timeout=30, verify=True)
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+            
+            # Log successful response
+            logger.info(f"OpenAI API call successful - tokens used: {result.get('usage', {}).get('total_tokens', 'unknown')}")
+            logger.debug(f"Response: {json.dumps(result, indent=2)}")
+            
+            return result
             
         except requests.RequestException as e:
             logger.error(f"OpenAI API request failed: {e}")
