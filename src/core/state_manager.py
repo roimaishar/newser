@@ -179,6 +179,17 @@ class StateManager:
         except Exception as e:
             logger.error(f"Failed to update notification timestamp: {e}")
     
+    def get_known_events(self) -> List[Any]:
+        """
+        Get known events for novelty analysis.
+        
+        Returns empty list for now - this can be enhanced later to store
+        event-specific data if needed for advanced novelty detection.
+        """
+        # For now, return empty list since we don't store complex event structures
+        # The novelty analysis will work without prior events (treats everything as new)
+        return []
+    
     def get_articles_since_timestamp(self, since_timestamp: datetime, hours_limit: int = 24) -> List[Dict[str, Any]]:
         """Get articles from database since a specific timestamp, within hours limit."""
         try:
