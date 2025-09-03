@@ -74,6 +74,7 @@ class CLIRouter:
         # Fetch subcommand
         fetch_parser = news_subparsers.add_parser('fetch', help='Fetch and analyze news articles from RSS feeds')
         fetch_parser.add_argument('--hours', type=int, default=1, help='Hours to look back (default: 1 for GitHub Actions)')
+        fetch_parser.add_argument('--sources', nargs='+', choices=['ynet', 'walla', 'globes', 'haaretz', 'all'], default=['all'], help='News sources to fetch from (default: all)')
         fetch_parser.add_argument('--similarity', type=float, default=0.8, help='Similarity threshold for deduplication (default: 0.8)')
         fetch_parser.add_argument('--no-dedupe', action='store_true', help='Skip deduplication')
         fetch_parser.add_argument('--no-analysis', action='store_true', help='Skip Hebrew AI analysis (analysis is now default)')
@@ -85,6 +86,7 @@ class CLIRouter:
         # Analyze subcommand
         analyze_parser = news_subparsers.add_parser('analyze', help='Analyze articles with Hebrew AI analysis')
         analyze_parser.add_argument('--hours', type=int, default=1, help='Hours to look back (default: 1 for GitHub Actions)')
+        analyze_parser.add_argument('--sources', nargs='+', choices=['ynet', 'walla', 'globes', 'haaretz', 'all'], default=['all'], help='News sources to fetch from (default: all)')
         analyze_parser.add_argument('--similarity', type=float, default=0.8, help='Similarity threshold for deduplication (default: 0.8)')
         analyze_parser.add_argument('--no-dedupe', action='store_true', help='Skip deduplication')
         analyze_parser.add_argument('--async', dest='async_fetch', action='store_true', help='Use async RSS fetching for better performance')

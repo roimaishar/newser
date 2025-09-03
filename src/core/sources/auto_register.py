@@ -9,6 +9,8 @@ import logging
 from .registry import register_source
 from .rss.ynet import YnetSource
 from .rss.walla import WallaSource
+from .rss.globes import GlobesSource
+from .rss.haaretz import HaaretzSource
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,8 @@ def register_all_sources():
     sources_to_register = [
         (YnetSource, 'ynet'),
         (WallaSource, 'walla'),
+        (GlobesSource, 'globes'),
+        (HaaretzSource, 'haaretz'),
     ]
     
     for source_class, name in sources_to_register:

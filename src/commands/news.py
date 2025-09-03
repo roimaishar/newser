@@ -48,21 +48,9 @@ class NewsCommand(BaseCommand):
             # Get components from container
             security_validator = self.security_validator
             
-            # Fetch articles (async or sync)
+            # Fetch articles using new modular source system
             with self.metrics.time_operation("rss_fetch"):
-                if getattr(args, 'async_fetch', False):
-                    # Use async RSS fetching
-                    from core.async_feed_parser import fetch_feeds_async
-                    articles = fetch_feeds_async(
-                        hours=args.hours,
-                        timeout=self.config.app.feed_timeout,
-                        max_concurrent=self.config.app.max_concurrent_feeds
-                    )
-                else:
-                    # Use standard sync RSS fetching
-                    feed_parser = self.feed_parser
-                    articles = feed_parser.get_recent_articles(hours=args.hours)
-                
+                articles = self._fetch_from_sources(args)
                 self.metrics.record_stat("articles_scraped", len(articles))
             
             if not articles:
@@ -371,21 +359,9 @@ class NewsCommand(BaseCommand):
         """Helper method to fetch and process articles."""
         security_validator = self.security_validator
         
-        # Fetch articles (async or sync)
+        # Fetch articles using new modular source system
         with self.metrics.time_operation("rss_fetch"):
-            if getattr(args, 'async_fetch', False):
-                # Use async RSS fetching
-                from core.async_feed_parser import fetch_feeds_async
-                articles = fetch_feeds_async(
-                    hours=args.hours,
-                    timeout=self.config.app.feed_timeout,
-                    max_concurrent=self.config.app.max_concurrent_feeds
-                )
-            else:
-                # Use standard sync RSS fetching
-                feed_parser = self.feed_parser
-                articles = feed_parser.get_recent_articles(hours=args.hours)
-            
+            articles = self._fetch_from_sources(args)
             self.metrics.record_stat("articles_scraped", len(articles))
         
         if not articles:
@@ -469,3 +445,63 @@ class NewsCommand(BaseCommand):
                     print(f"    {article.link}\n")
             else:
                 print("לא נמצאו כתבות בטווח הזמן המבוקש")
+    
+    def _fetch_from_sources(self, args):
+        """Fetch articles from selected news sources."""
+        from core.sources import get_source, list_available_sources
+        
+        # Determine which sources to use
+        requested_sources = getattr(args, 'sources', ['all'])
+        if 'all' in requested_sources:
+            sources_to_fetch = list_available_sources()
+        else:
+            sources_to_fetch = requested_sources
+        
+        all_articles = []
+        
+        for source_name in sources_to_fetch:
+            try:
+                if getattr(args, 'verbose', False):
+                    print(f"📡 Fetching from {source_name}...")
+                
+                # Get source instance
+                source = get_source(source_name, {'enable_cache': True})
+                
+                # Fetch articles 
+                articles = source.fetch_recent_articles(hours=args.hours)
+                
+                if getattr(args, 'verbose', False):
+                    print(f"  📰 Found {len(articles)} articles from {source_name}")
+                
+                # Convert to legacy Article format for compatibility
+                for article_dict in articles:
+                    article_obj = self._dict_to_article(article_dict)
+                    all_articles.append(article_obj)
+                    
+            except Exception as e:
+                self.logger.warning(f"Failed to fetch from {source_name}: {e}")
+                if getattr(args, 'verbose', False):
+                    print(f"  ❌ Failed to fetch from {source_name}: {e}")
+        
+        return all_articles
+    
+    def _dict_to_article(self, article_dict):
+        """Convert dictionary format to legacy Article object for compatibility."""
+        from core.models.article import Article
+        from datetime import datetime
+        
+        # Handle published date
+        published = article_dict.get('published')
+        if isinstance(published, str):
+            try:
+                published = datetime.fromisoformat(published.replace('Z', '+00:00'))
+            except Exception:
+                published = None
+        
+        return Article(
+            title=article_dict.get('title', ''),
+            link=article_dict.get('link', ''),
+            source=article_dict.get('source', ''),
+            published=published,
+            summary=article_dict.get('summary', '')
+        )

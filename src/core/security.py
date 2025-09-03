@@ -31,7 +31,13 @@ class SecurityValidator:
         'www.ynet.co.il', 
         'rss.walla.co.il',
         'news.walla.co.il',
-        'walla.co.il'
+        'walla.co.il',
+        'globes.co.il',
+        'www.globes.co.il',
+        'haaretz.co.il',
+        'www.haaretz.co.il',
+        'haaretz.com',
+        'www.haaretz.com'
     }
     
     # Patterns for detecting potentially malicious content
