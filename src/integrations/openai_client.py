@@ -64,13 +64,39 @@ class OpenAIClient:
         logger.info(f"Making OpenAI API call to {url}")
         logger.debug(f"Request data: {json.dumps(data, indent=2)}")
         
+        # Log the actual prompt being sent to LLM
+        if 'messages' in data:
+            messages = data['messages']
+            logger.info(f"=== LLM INPUT PROMPT (Messages: {len(messages)}) ===")
+            for i, msg in enumerate(messages):
+                role = msg.get('role', 'unknown')
+                content = msg.get('content', '')
+                # Truncate very long content for readability
+                if len(content) > 1000:
+                    content_preview = content[:500] + "\n...\n" + content[-500:]
+                else:
+                    content_preview = content
+                logger.info(f"Message {i+1} [{role.upper()}]:\n{content_preview}")
+            logger.info("=== END LLM INPUT ===")
+        
         try:
             response = requests.post(url, headers=self.headers, json=data, timeout=30, verify=True)
             response.raise_for_status()
             result = response.json()
             
-            # Log successful response
-            logger.info(f"OpenAI API call successful - tokens used: {result.get('usage', {}).get('total_tokens', 'unknown')}")
+            # Log the actual response from LLM
+            if 'choices' in result and result['choices']:
+                response_content = result['choices'][0].get('message', {}).get('content', '')
+                logger.info(f"=== LLM OUTPUT RESPONSE ===")
+                logger.info(f"{response_content}")
+                logger.info("=== END LLM OUTPUT ===")
+            
+            # Log successful response with token usage
+            usage = result.get('usage', {})
+            prompt_tokens = usage.get('prompt_tokens', 'unknown')
+            completion_tokens = usage.get('completion_tokens', 'unknown') 
+            total_tokens = usage.get('total_tokens', 'unknown')
+            logger.info(f"OpenAI API call successful - tokens: {prompt_tokens} prompt + {completion_tokens} completion = {total_tokens} total")
             logger.debug(f"Response: {json.dumps(result, indent=2)}")
             
             return result

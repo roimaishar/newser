@@ -1,0 +1,72 @@
+{
+  "date": "2025-09-04",
+  "created": "2025-09-04T10:37:58.016946",
+  "daily_totals": {
+    "runs": 1,
+    "articles_scraped": 6,
+    "articles_after_dedup": 4,
+    "analyses_completed": 1,
+    "slack_messages_sent": 1,
+    "successful_runs": 1,
+    "failed_runs": 0,
+    "avg_runtime": 10.846308946609497,
+    "avg_fetch_time": 1.247162103652954,
+    "avg_analysis_time": 7.618701219558716
+  },
+  "runs": [
+    {
+      "run_id": "befa1fe7",
+      "timestamp": "2025-09-04T10:37:58.016696",
+      "command": "news analyze --hours 1 --updates-only --slack",
+      "total_duration": 10.846308946609497,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1756971467.1727328,
+          "end_time": 1756971468.419895,
+          "duration": 1.247162103652954,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1756971468.419908,
+          "end_time": 1756971468.420191,
+          "duration": 0.0002830028533935547,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1756971468.420199,
+          "end_time": 1756971468.423834,
+          "duration": 0.0036351680755615234,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1756971469.698467,
+          "end_time": 1756971477.3171682,
+          "duration": 7.618701219558716,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "slack_notification",
+          "start_time": 1756971477.317206,
+          "end_time": 1756971477.697977,
+          "duration": 0.3807711601257324,
+          "success": true,
+          "error_message": null
+        }
+      ],
+      "articles_scraped": 6,
+      "articles_after_dedup": 4,
+      "analysis_completed": true,
+      "slack_sent": true,
+      "success": true
+    }
+  ],
+  "last_updated": "2025-09-04T10:37:58.017033"
+}

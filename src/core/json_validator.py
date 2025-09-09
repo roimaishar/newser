@@ -36,16 +36,25 @@ class HebrewAnalysisValidator:
         Raises:
             JSONValidationError: If validation fails completely
         """
-        # Step 1: Extract JSON from potentially mixed output
-        json_str = HebrewAnalysisValidator._extract_json(raw_output)
-        
-        # Step 2: Parse JSON
+        # Step 1: Try parsing raw output directly first (LLM often returns pure JSON)
         try:
-            data = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON parsing failed: {e}")
-            # Attempt repair
-            data = HebrewAnalysisValidator._repair_json(json_str)
+            data = json.loads(raw_output.strip())
+            logger.info("Successfully parsed raw LLM output as JSON")
+        except json.JSONDecodeError:
+            # Step 2: Extract JSON from potentially mixed output
+            json_str = HebrewAnalysisValidator._extract_json(raw_output)
+            
+            # Step 3: Parse extracted JSON
+            try:
+                data = json.loads(json_str)
+                logger.info("Successfully parsed extracted JSON")
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON parsing failed: {e}")
+                logger.error(f"Problematic JSON string length: {len(json_str)}")
+                logger.error(f"First 300 chars: {repr(json_str[:300])}")
+                logger.error(f"Last 300 chars: {repr(json_str[-300:])}")
+                # Attempt repair
+                data = HebrewAnalysisValidator._repair_json(json_str)
         
         # Step 3: Validate schema
         if analysis_type == "updates":
@@ -82,6 +91,7 @@ class HebrewAnalysisValidator:
     def _repair_json(broken_json: str) -> Dict[str, Any]:
         """Attempt to repair common JSON syntax errors."""
         logger.warning("Attempting JSON repair")
+        logger.warning(f"Original JSON length: {len(broken_json)}")
         
         # Common fixes
         repaired = broken_json
@@ -89,16 +99,38 @@ class HebrewAnalysisValidator:
         # Fix trailing commas
         repaired = repaired.replace(',}', '}').replace(',]', ']')
         
-        # Fix missing quotes around keys (basic cases)
+        # Fix Hebrew text escaping issues - escape quotes within string values
         import re
+        
+        # Fix quotes within Hebrew text (like צה"ל) - escape quotes that are inside string values
+        # This regex finds quoted strings and escapes internal quotes
+        def escape_internal_quotes(match):
+            content = match.group(1)
+            # Escape any unescaped quotes within the string content
+            escaped_content = content.replace('"', '\\"')
+            return f'"{escaped_content}"'
+        
+        # Apply to string values (text between quotes that comes after colons)
+        repaired = re.sub(r':\s*"([^"\\]*(?:\\.[^"\\]*)*)"', 
+                         lambda m: f': "{m.group(1).replace(chr(34), chr(92)+chr(34))}"', 
+                         repaired)
+        
+        # Fix missing quotes around keys (basic cases)
         repaired = re.sub(r'(\w+):', r'"\1":', repaired)
         
-        # Fix Hebrew text escaping issues
+        # Fix newline escaping
         repaired = repaired.replace('\n', '\\n').replace('\r', '\\r')
         
+        logger.warning(f"Repaired JSON length: {len(repaired)}")
+        logger.warning(f"Repaired JSON first 300 chars: {repr(repaired[:300])}")
+        
         try:
-            return json.loads(repaired)
-        except json.JSONDecodeError:
+            result = json.loads(repaired)
+            logger.warning("JSON repair successful!")
+            return result
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON repair failed with error: {e}")
+            logger.error(f"Repair attempt at position {e.pos if hasattr(e, 'pos') else 'unknown'}")
             # Final fallback: return minimal valid structure
             logger.error("JSON repair failed, returning fallback structure")
             return {

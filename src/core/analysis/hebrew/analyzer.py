@@ -214,7 +214,7 @@ class HebrewNewsAnalyzer:
             
             # Extract results
             has_new = analysis_data.get('has_new', False)
-            items = analysis_data.get('new_or_updated_items', analysis_data.get('items', []))
+            items = analysis_data.get('items', [])
             bulletins = analysis_data.get('bulletins_he', '')
             
             # Separate new vs updated events
