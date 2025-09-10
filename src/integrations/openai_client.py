@@ -99,6 +99,44 @@ class OpenAIClient:
             logger.info(f"OpenAI API call successful - tokens: {prompt_tokens} prompt + {completion_tokens} completion = {total_tokens} total")
             logger.debug(f"Response: {json.dumps(result, indent=2)}")
             
+            # Log to debug file
+            try:
+                from core.llm_logger import get_llm_logger
+                llm_logger = get_llm_logger()
+                
+                # Extract system and user prompts
+                system_prompt = ""
+                user_prompt = ""
+                analysis_type = "unknown"
+                response_content = ""
+                
+                if 'messages' in data:
+                    for msg in data['messages']:
+                        if msg.get('role') == 'system':
+                            system_prompt = msg.get('content', '')
+                        elif msg.get('role') == 'user':
+                            user_prompt = msg.get('content', '')
+                            # Try to determine analysis type from prompt
+                            if 'novelty detection' in user_prompt.lower() or 'compare new news to prior knowledge' in user_prompt.lower():
+                                analysis_type = "novelty_detection"
+                            elif 'thematic' in user_prompt.lower():
+                                analysis_type = "thematic_analysis"
+                            elif 'notification' in user_prompt.lower():
+                                analysis_type = "notification_decision"
+                
+                if 'choices' in result and result['choices']:
+                    response_content = result['choices'][0].get('message', {}).get('content', '')
+                
+                llm_logger.log_llm_interaction(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt, 
+                    response=response_content,
+                    token_usage=usage,
+                    analysis_type=analysis_type
+                )
+            except Exception as e:
+                logger.error(f"Failed to log LLM interaction to debug file: {e}")
+            
             return result
             
         except requests.RequestException as e:

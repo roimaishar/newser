@@ -127,6 +127,19 @@ class SmartNotifier:
                         time_since_last: str) -> Optional[NotificationDecision]:
         """Send 3-bucket data to LLM for analysis."""
         try:
+            # Log notification decision inputs
+            try:
+                from core.llm_logger import get_llm_logger
+                llm_logger = get_llm_logger()
+                llm_logger.log_notification_decision(
+                    fresh_articles=fresh_articles,
+                    since_last_articles=since_last_notification,
+                    previous_24h_articles=previous_24_hours,
+                    time_since_last=time_since_last
+                )
+            except Exception as e:
+                logger.error(f"Failed to log notification decision inputs: {e}")
+            
             # Generate prompt
             prompt = get_notification_prompt(
                 fresh_articles,
@@ -159,6 +172,21 @@ class SmartNotifier:
                 logger.error(f"Failed to parse LLM JSON response: {e}")
                 logger.debug(f"Raw LLM response: {content}")
                 return None
+            
+            # Log LLM decision response
+            try:
+                from core.llm_logger import get_llm_logger
+                llm_logger = get_llm_logger()
+                llm_logger.log_notification_decision(
+                    fresh_articles=fresh_articles,
+                    since_last_articles=since_last_notification,
+                    previous_24h_articles=previous_24_hours,
+                    time_since_last=time_since_last,
+                    decision_response=content,
+                    final_decision=result
+                )
+            except Exception as e:
+                logger.error(f"Failed to log notification decision response: {e}")
             
             # Validate structure
             required_fields = ['should_notify_now', 'compact_push', 'full_message']
@@ -260,6 +288,25 @@ class SmartNotifier:
                         logger.error("Failed to send push notification")
                 except Exception as e:
                     logger.error(f"Push notification failed: {e}")
+            
+            # Log final notification results
+            try:
+                from core.llm_logger import get_llm_logger
+                llm_logger = get_llm_logger()
+                
+                success_status = {}
+                if slack_client:
+                    success_status['slack'] = sent_any  # Simplified for now
+                if push_client:
+                    success_status['push'] = sent_any   # Simplified for now
+                
+                llm_logger.log_notifications_sent(
+                    compact_push=decision.compact_push,
+                    full_message=decision.full_message,
+                    success_status=success_status
+                )
+            except Exception as e:
+                logger.error(f"Failed to log notification results: {e}")
             
             # Update notification timestamp if any notification was sent
             if sent_any:

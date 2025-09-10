@@ -2,16 +2,16 @@
   "date": "2025-09-09",
   "created": "2025-09-09T16:34:44.059111",
   "daily_totals": {
-    "runs": 5,
-    "articles_scraped": 15,
-    "articles_after_dedup": 15,
-    "analyses_completed": 5,
+    "runs": 6,
+    "articles_scraped": 22,
+    "articles_after_dedup": 22,
+    "analyses_completed": 6,
     "slack_messages_sent": 0,
-    "successful_runs": 5,
+    "successful_runs": 6,
     "failed_runs": 0,
-    "avg_runtime": 15.159982363382975,
-    "avg_fetch_time": 0.13362411657969156,
-    "avg_analysis_time": 14.303057551383972
+    "avg_runtime": 15.961709942136492,
+    "avg_fetch_time": 0.13906349454607284,
+    "avg_analysis_time": 14.725653171539307
   },
   "runs": [
     {
@@ -238,7 +238,52 @@
       "analysis_completed": true,
       "slack_sent": false,
       "success": true
+    },
+    {
+      "run_id": "3f1e7db5",
+      "timestamp": "2025-09-09T17:22:56.290964",
+      "command": "news fetch --hours 1",
+      "total_duration": 18.132909774780273,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1757427758.160463,
+          "end_time": 1757427758.326165,
+          "duration": 0.16570186614990234,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1757427758.3261812,
+          "end_time": 1757427758.32653,
+          "duration": 0.00034880638122558594,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1757427758.32654,
+          "end_time": 1757427758.334102,
+          "duration": 0.007561922073364258,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1757427760.028121,
+          "end_time": 1757427776.062025,
+          "duration": 16.03390407562256,
+          "success": true,
+          "error_message": null
+        }
+      ],
+      "articles_scraped": 7,
+      "articles_after_dedup": 7,
+      "analysis_completed": true,
+      "slack_sent": false,
+      "success": true
     }
   ],
-  "last_updated": "2025-09-09T16:40:05.256906"
+  "last_updated": "2025-09-09T17:22:56.291766"
 }

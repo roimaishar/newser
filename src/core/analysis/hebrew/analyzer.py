@@ -88,6 +88,14 @@ class HebrewNewsAnalyzer:
             # Convert articles to dicts for prompt processing
             article_dicts = [article.to_dict() for article in articles]
             
+            # Log raw articles data
+            try:
+                from core.llm_logger import get_llm_logger
+                llm_logger = get_llm_logger()
+                llm_logger.log_raw_articles(article_dicts, f"Thematic Analysis Input ({len(articles)} articles)")
+            except Exception as e:
+                logger.error(f"Failed to log raw articles: {e}")
+            
             # Generate Hebrew analysis prompt
             prompt = NewsAnalysisPrompts.get_analysis_prompt(article_dicts, hours=hours)
             
@@ -107,6 +115,14 @@ class HebrewNewsAnalyzer:
             
             # Parse Hebrew JSON response
             analysis_data = self._parse_ai_response(content)
+            
+            # Log parsed analysis results
+            try:
+                from core.llm_logger import get_llm_logger
+                llm_logger = get_llm_logger()
+                llm_logger.log_parsed_analysis(analysis_data, "thematic_analysis")
+            except Exception as e:
+                logger.error(f"Failed to log parsed analysis: {e}")
             
             # Extract journalism-focused analysis
             mobile_headline = analysis_data.get('mobile_headline', 'עדכון חדשות')
@@ -190,6 +206,14 @@ class HebrewNewsAnalyzer:
             # Convert articles to dicts
             article_dicts = [article.to_dict() for article in articles]
             
+            # Log raw articles data for novelty analysis
+            try:
+                from core.llm_logger import get_llm_logger
+                llm_logger = get_llm_logger()
+                llm_logger.log_raw_articles(article_dicts, f"Novelty Analysis Input ({len(articles)} articles, {len(known_events)} known events)")
+            except Exception as e:
+                logger.error(f"Failed to log raw articles: {e}")
+            
             # Generate novelty detection prompt
             prompt = NewsAnalysisPrompts.get_update_prompt(
                 article_dicts, known_items_dicts, hours=hours
@@ -211,6 +235,14 @@ class HebrewNewsAnalyzer:
             
             # Parse and validate novelty analysis response
             analysis_data = validate_hebrew_analysis(content, "updates")
+            
+            # Log parsed analysis results
+            try:
+                from core.llm_logger import get_llm_logger
+                llm_logger = get_llm_logger()
+                llm_logger.log_parsed_analysis(analysis_data, "novelty_detection")
+            except Exception as e:
+                logger.error(f"Failed to log parsed analysis: {e}")
             
             # Extract results
             has_new = analysis_data.get('has_new', False)
