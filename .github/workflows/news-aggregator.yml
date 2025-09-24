@@ -95,6 +95,14 @@ jobs:
       run: |
         python -c "from src.core.database import get_database; db = get_database(); deleted = db.cleanup_old_records(); print(f'Cleaned up {deleted} old records')"
     
+    - name: Upload LLM debug logs
+      uses: actions/upload-artifact@v4
+      if: always()  # Upload even on failure
+      with:
+        name: llm-debug-logs-${{ github.run_number }}
+        path: llm_debug.log
+        retention-days: 7
+    
     - name: Send error alert to Slack on failure
       if: failure() && env.SLACK_WEBHOOK_URL
       env:
