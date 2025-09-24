@@ -202,7 +202,7 @@ class OpenAIClient:
             }
         
         # Generate novelty detection prompt
-        from ..core.analysis.hebrew.prompts import NewsAnalysisPrompts
+        from core.analysis.hebrew.prompts import NewsAnalysisPrompts
         prompt = NewsAnalysisPrompts.get_update_prompt(articles, known_events, hours=hours)
         
         messages = [
@@ -234,7 +234,7 @@ class OpenAIClient:
         Returns:
             Structured notification decision
         """
-        from ..core.analysis.hebrew.prompts import get_notification_prompt
+        from core.analysis.hebrew.prompts import get_notification_prompt
         prompt = get_notification_prompt(fresh_articles, since_last, previous_24h, time_since_last)
         
         messages = [
