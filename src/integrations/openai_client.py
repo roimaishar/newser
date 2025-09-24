@@ -14,10 +14,11 @@ import json
 import logging
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-import requests
 from datetime import datetime
 
+from openai import OpenAI
 from core.analysis.hebrew.prompts import NewsAnalysisPrompts
+from core.schemas import get_schema_by_type
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class NewsAnalysis:
     analysis_timestamp: datetime
 
 class OpenAIClient:
-    """Client for OpenAI API integration."""
+    """Client for OpenAI API integration with structured outputs."""
     
     def __init__(self, api_key: Optional[str] = None):
         """
@@ -41,55 +42,71 @@ class OpenAIClient:
         Args:
             api_key: OpenAI API key. If None, tries to get from environment.
         """
-        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
-        if not self.api_key:
+        api_key = api_key or os.getenv('OPENAI_API_KEY')
+        if not api_key:
             raise ValueError("OpenAI API key not provided and not found in OPENAI_API_KEY environment variable")
         
-        self.base_url = "https://api.openai.com/v1"
+        self.client = OpenAI(api_key=api_key)
         self.model = "gpt-4o-mini"  # Cost-effective model for text analysis
         self.max_tokens = 1000
         self.temperature = 0.3  # Lower temperature for more consistent analysis
         
-        # Headers for API requests
-        self.headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        
-    def _make_api_request(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Make a request to OpenAI API."""
-        url = f"{self.base_url}/{endpoint}"
+    def _make_structured_request(self, messages: List[Dict[str, str]], schema: Dict[str, Any], analysis_type: str = "unknown") -> Dict[str, Any]:
+        """Make a structured request to OpenAI API with JSON schema enforcement."""
         
         # Log the API call for debugging
-        logger.info(f"Making OpenAI API call to {url}")
-        logger.debug(f"Request data: {json.dumps(data, indent=2)}")
+        logger.info(f"Making OpenAI structured API call for {analysis_type}")
         
         # Log the actual prompt being sent to LLM
-        if 'messages' in data:
-            messages = data['messages']
-            logger.info(f"=== LLM INPUT PROMPT (Messages: {len(messages)}) ===")
-            for i, msg in enumerate(messages):
-                role = msg.get('role', 'unknown')
-                content = msg.get('content', '')
-                # Truncate very long content for readability
-                if len(content) > 1000:
-                    content_preview = content[:500] + "\n...\n" + content[-500:]
-                else:
-                    content_preview = content
-                logger.info(f"Message {i+1} [{role.upper()}]:\n{content_preview}")
-            logger.info("=== END LLM INPUT ===")
+        logger.info(f"=== LLM INPUT PROMPT (Messages: {len(messages)}) ===")
+        for i, msg in enumerate(messages):
+            role = msg.get('role', 'unknown')
+            content = msg.get('content', '')
+            # Truncate very long content for readability
+            if len(content) > 1000:
+                content_preview = content[:500] + "\n...\n" + content[-500:]
+            else:
+                content_preview = content
+            logger.info(f"Message {i+1} [{role.upper()}]:\n{content_preview}")
+        logger.info("=== END LLM INPUT ===")
         
         try:
-            response = requests.post(url, headers=self.headers, json=data, timeout=30, verify=True)
-            response.raise_for_status()
-            result = response.json()
+            # Use structured outputs with JSON schema
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": f"{analysis_type}_response",
+                        "schema": schema,
+                        "strict": True
+                    }
+                }
+            )
+            
+            # Convert to dict for compatibility
+            result = {
+                "choices": [{
+                    "message": {
+                        "content": response.choices[0].message.content,
+                        "role": response.choices[0].message.role
+                    }
+                }],
+                "usage": {
+                    "prompt_tokens": response.usage.prompt_tokens,
+                    "completion_tokens": response.usage.completion_tokens,
+                    "total_tokens": response.usage.total_tokens
+                }
+            }
             
             # Log the actual response from LLM
-            if 'choices' in result and result['choices']:
-                response_content = result['choices'][0].get('message', {}).get('content', '')
-                logger.info(f"=== LLM OUTPUT RESPONSE ===")
-                logger.info(f"{response_content}")
-                logger.info("=== END LLM OUTPUT ===")
+            response_content = result['choices'][0]['message']['content']
+            logger.info(f"=== LLM OUTPUT RESPONSE ===")
+            logger.info(f"{response_content}")
+            logger.info("=== END LLM OUTPUT ===")
             
             # Log successful response with token usage
             usage = result.get('usage', {})
@@ -97,7 +114,6 @@ class OpenAIClient:
             completion_tokens = usage.get('completion_tokens', 'unknown') 
             total_tokens = usage.get('total_tokens', 'unknown')
             logger.info(f"OpenAI API call successful - tokens: {prompt_tokens} prompt + {completion_tokens} completion = {total_tokens} total")
-            logger.debug(f"Response: {json.dumps(result, indent=2)}")
             
             # Log to debug file
             try:
@@ -107,25 +123,12 @@ class OpenAIClient:
                 # Extract system and user prompts
                 system_prompt = ""
                 user_prompt = ""
-                analysis_type = "unknown"
-                response_content = ""
                 
-                if 'messages' in data:
-                    for msg in data['messages']:
-                        if msg.get('role') == 'system':
-                            system_prompt = msg.get('content', '')
-                        elif msg.get('role') == 'user':
-                            user_prompt = msg.get('content', '')
-                            # Try to determine analysis type from prompt
-                            if 'novelty detection' in user_prompt.lower() or 'compare new news to prior knowledge' in user_prompt.lower():
-                                analysis_type = "novelty_detection"
-                            elif 'thematic' in user_prompt.lower():
-                                analysis_type = "thematic_analysis"
-                            elif 'notification' in user_prompt.lower():
-                                analysis_type = "notification_decision"
-                
-                if 'choices' in result and result['choices']:
-                    response_content = result['choices'][0].get('message', {}).get('content', '')
+                for msg in messages:
+                    if msg.get('role') == 'system':
+                        system_prompt = msg.get('content', '')
+                    elif msg.get('role') == 'user':
+                        user_prompt = msg.get('content', '')
                 
                 llm_logger.log_llm_interaction(
                     system_prompt=system_prompt,
@@ -139,16 +142,117 @@ class OpenAIClient:
             
             return result
             
-        except requests.RequestException as e:
-            logger.error(f"OpenAI API request failed: {e}")
+        except Exception as e:
+            logger.error(f"OpenAI structured API request failed: {e}")
             raise
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse OpenAI API response: {e}")
-            raise
+    
+    def analyze_thematic(self, articles: List[Dict[str, str]], hours: int = 24) -> Dict[str, Any]:
+        """
+        Perform thematic analysis using structured outputs.
+        
+        Args:
+            articles: List of articles to analyze
+            hours: Time window for context
+            
+        Returns:
+            Structured thematic analysis results
+        """
+        if not articles:
+            return {
+                "mobile_headline": "לא נמצאו כתבות לניתוח",
+                "story_behind_story": "אין תוכן זמין לניתוח",
+                "connection_threads": [],
+                "reader_impact": "",
+                "trend_signal": ""
+            }
+        
+        # Generate analysis prompt using centralized prompts
+        prompt = NewsAnalysisPrompts.get_analysis_prompt(articles, hours=hours)
+        
+        messages = [
+            {"role": "system", "content": NewsAnalysisPrompts.SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ]
+        
+        # Get schema and make structured request
+        schema = get_schema_by_type("thematic")
+        response = self._make_structured_request(messages, schema, "thematic_analysis")
+        
+        # Parse JSON response (guaranteed to be valid due to structured output)
+        content = response['choices'][0]['message']['content']
+        return json.loads(content)
+    
+    def analyze_novelty(self, articles: List[Dict[str, str]], known_events: List[Dict[str, Any]], hours: int = 12) -> Dict[str, Any]:
+        """
+        Perform novelty detection analysis using structured outputs.
+        
+        Args:
+            articles: List of articles to analyze
+            known_events: List of known events for comparison
+            hours: Time window for context
+            
+        Returns:
+            Structured novelty analysis results
+        """
+        if not articles:
+            return {
+                "has_new": False,
+                "items": [],
+                "bulletins_he": "לא נמצאו כתבות חדשות לניתוח"
+            }
+        
+        # Generate novelty detection prompt
+        from ..core.analysis.hebrew.prompts import NewsAnalysisPrompts
+        prompt = NewsAnalysisPrompts.get_update_prompt(articles, known_events, hours=hours)
+        
+        messages = [
+            {"role": "system", "content": NewsAnalysisPrompts.SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ]
+        
+        # Get schema and make structured request
+        schema = get_schema_by_type("novelty")
+        response = self._make_structured_request(messages, schema, "novelty_detection")
+        
+        # Parse JSON response (guaranteed to be valid due to structured output)
+        content = response['choices'][0]['message']['content']
+        return json.loads(content)
+    
+    def analyze_notification_decision(self, fresh_articles: List[Dict[str, Any]], 
+                                   since_last: List[Dict[str, Any]], 
+                                   previous_24h: List[Dict[str, Any]], 
+                                   time_since_last: str) -> Dict[str, Any]:
+        """
+        Analyze whether to send notifications using structured outputs.
+        
+        Args:
+            fresh_articles: Recently scraped articles
+            since_last: Articles since last notification
+            previous_24h: Articles from previous 24 hours
+            time_since_last: Time since last notification
+            
+        Returns:
+            Structured notification decision
+        """
+        from ..core.analysis.hebrew.prompts import get_notification_prompt
+        prompt = get_notification_prompt(fresh_articles, since_last, previous_24h, time_since_last)
+        
+        messages = [
+            {"role": "system", "content": "אתה עורך חדשות מקצועי שמחליט על התראות חכמות."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        # Get schema and make structured request
+        schema = get_schema_by_type("notification")
+        response = self._make_structured_request(messages, schema, "notification_decision")
+        
+        # Parse JSON response (guaranteed to be valid due to structured output)
+        content = response['choices'][0]['message']['content']
+        return json.loads(content)
     
     def analyze_headlines(self, articles: List[Dict[str, str]]) -> NewsAnalysis:
         """
-        Analyze a collection of news headlines using OpenAI.
+        Legacy method for backward compatibility.
         
         Args:
             articles: List of articles with 'title', 'source', and optional 'summary'
@@ -156,72 +260,19 @@ class OpenAIClient:
         Returns:
             NewsAnalysis object with AI-generated insights
         """
-        if not articles:
+        try:
+            # Use new structured thematic analysis
+            analysis_data = self.analyze_thematic(articles)
+            
             return NewsAnalysis(
-                summary="No articles to analyze",
-                key_topics=[],
-                sentiment="neutral",
-                insights=[],
-                article_count=0,
+                summary=analysis_data.get('mobile_headline', 'Analysis completed'),
+                key_topics=analysis_data.get('connection_threads', []),
+                sentiment="neutral",  # Thematic analysis doesn't focus on sentiment
+                insights=[analysis_data.get('reader_impact', ''), analysis_data.get('trend_signal', '')],
+                article_count=len(articles),
                 analysis_timestamp=datetime.now()
             )
-        
-        # Generate analysis prompt using centralized prompts
-        prompt = NewsAnalysisPrompts.get_analysis_prompt(articles, hours=24)
-
-        # Make API request
-        try:
-            data = {
-                "model": self.model,
-                "messages": [
-                    {
-                        "role": "system", 
-                        "content": NewsAnalysisPrompts.SYSTEM_PROMPT
-                    },
-                    {"role": "user", "content": prompt}
-                ],
-                "max_tokens": self.max_tokens,
-                "temperature": self.temperature
-            }
             
-            response = self._make_api_request("chat/completions", data)
-            
-            # Parse response
-            content = response['choices'][0]['message']['content'].strip()
-            
-            # Try to extract JSON from response
-            try:
-                # Remove any markdown code blocks
-                if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0].strip()
-                elif "```" in content:
-                    content = content.split("```")[1].split("```")[0].strip()
-                
-                analysis_data = json.loads(content)
-                
-                return NewsAnalysis(
-                    summary=analysis_data.get('summary', 'Analysis completed'),
-                    key_topics=analysis_data.get('key_topics', []),
-                    sentiment=analysis_data.get('sentiment', 'neutral'),
-                    insights=analysis_data.get('insights', []),
-                    article_count=len(articles),
-                    analysis_timestamp=datetime.now()
-                )
-                
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse AI analysis response as JSON: {e}")
-                logger.debug(f"Raw response: {content}")
-                
-                # Fallback: create basic analysis
-                return NewsAnalysis(
-                    summary="AI analysis completed but response format was invalid",
-                    key_topics=["news", "current events"],
-                    sentiment="neutral",
-                    insights=["Analysis response could not be parsed"],
-                    article_count=len(articles),
-                    analysis_timestamp=datetime.now()
-                )
-                
         except Exception as e:
             logger.error(f"OpenAI analysis failed: {e}")
             return NewsAnalysis(
@@ -296,17 +347,16 @@ class OpenAIClient:
                 }
             ]
             
-            data = {
-                "model": self.model,
-                "messages": messages,
-                "max_tokens": 200,
-                "temperature": 0.3,
-            }
+            # Use regular completion for simple text analysis
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=200,
+                temperature=0.3
+            )
             
-            response = self._make_api_request("chat/completions", data)
-            
-            if response and "choices" in response and len(response["choices"]) > 0:
-                return response["choices"][0]["message"]["content"].strip()
+            if response and response.choices:
+                return response.choices[0].message.content.strip()
             
             return None
             
@@ -317,16 +367,58 @@ class OpenAIClient:
     def test_connection(self) -> bool:
         """Test OpenAI API connection."""
         try:
-            data = {
-                "model": "gpt-4o-mini",
-                "messages": [{"role": "user", "content": "Hello"}],
-                "max_tokens": 5
-            }
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": "Hello"}],
+                max_tokens=5
+            )
             
-            self._make_api_request("chat/completions", data)
-            logger.info("OpenAI API connection test successful")
-            return True
+            if response and response.choices:
+                logger.info("OpenAI API connection test successful")
+                return True
+            else:
+                logger.error("OpenAI API connection test failed: no response")
+                return False
             
         except Exception as e:
             logger.error(f"OpenAI API connection test failed: {e}")
             return False
+    
+    def chat_completion(self, messages: List[Dict[str, str]], max_tokens: int = None, temperature: float = None) -> Dict[str, Any]:
+        """
+        Legacy method for backward compatibility with smart notifier.
+        
+        Args:
+            messages: Chat messages
+            max_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+            
+        Returns:
+            Response dict in legacy format
+        """
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=max_tokens or self.max_tokens,
+                temperature=temperature or self.temperature
+            )
+            
+            # Convert to legacy format
+            return {
+                "choices": [{
+                    "message": {
+                        "content": response.choices[0].message.content,
+                        "role": response.choices[0].message.role
+                    }
+                }],
+                "usage": {
+                    "prompt_tokens": response.usage.prompt_tokens,
+                    "completion_tokens": response.usage.completion_tokens,
+                    "total_tokens": response.usage.total_tokens
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Chat completion failed: {e}")
+            raise

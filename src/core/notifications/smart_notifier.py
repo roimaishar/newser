@@ -15,10 +15,9 @@ from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 
+from integrations.openai_client import OpenAIClient
 from ..state_manager import StateManager
 from .scheduler import NotificationScheduler, format_time_since_last_notification
-from ..analysis.hebrew.prompts import get_notification_prompt
-# JSON validation not needed for this implementation
 
 logger = logging.getLogger(__name__)
 
@@ -49,18 +48,17 @@ class SmartNotifier:
     5. Send notifications if approved
     """
     
-    def __init__(self, 
-                 state_manager: StateManager,
-                 openai_client=None,
-                 scheduler: Optional[NotificationScheduler] = None):
+    def __init__(
+        self,
+        state_manager: StateManager,
+        openai_client: Optional[OpenAIClient] = None,
+        scheduler: Optional[NotificationScheduler] = None,
+    ) -> None:
         """Initialize smart notifier."""
+
         self.state_manager = state_manager
-        self.openai_client = openai_client
+        self.openai_client = openai_client or OpenAIClient()
         self.scheduler = scheduler or NotificationScheduler()
-        
-        if self.openai_client is None:
-            from integrations.openai_client import OpenAIClient
-            self.openai_client = OpenAIClient()
     
     def prepare_3_bucket_data(self, fresh_articles: List[Dict[str, Any]]) -> Tuple[List, List, List, str]:
         """
@@ -126,109 +124,77 @@ class SmartNotifier:
                         previous_24_hours: List[Dict[str, Any]],
                         time_since_last: str) -> Optional[NotificationDecision]:
         """Send 3-bucket data to LLM for analysis."""
-        try:
-            # Log notification decision inputs
+        llm_logger = self._get_llm_logger()
+
+        if llm_logger:
             try:
-                from core.llm_logger import get_llm_logger
-                llm_logger = get_llm_logger()
-                llm_logger.log_notification_decision(
-                    fresh_articles=fresh_articles,
-                    since_last_articles=since_last_notification,
-                    previous_24h_articles=previous_24_hours,
-                    time_since_last=time_since_last
-                )
-            except Exception as e:
-                logger.error(f"Failed to log notification decision inputs: {e}")
-            
-            # Generate prompt
-            prompt = get_notification_prompt(
-                fresh_articles,
-                since_last_notification, 
-                previous_24_hours,
-                time_since_last
-            )
-            
-            # Call LLM
-            logger.info("Sending 3-bucket analysis to LLM")
-            response = self.openai_client.chat_completion(
-                messages=[
-                    {"role": "system", "content": "אתה עורך חדשות מקצועי שמחליט על התראות חכמות."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=500,
-                temperature=0.1
-            )
-            
-            if not response or not response.get('choices'):
-                logger.error("No response from LLM")
-                return None
-            
-            content = response['choices'][0]['message']['content']
-            
-            # Parse JSON response
-            try:
-                result = json.loads(content)
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse LLM JSON response: {e}")
-                logger.debug(f"Raw LLM response: {content}")
-                return None
-            
-            # Log LLM decision response
-            try:
-                from core.llm_logger import get_llm_logger
-                llm_logger = get_llm_logger()
                 llm_logger.log_notification_decision(
                     fresh_articles=fresh_articles,
                     since_last_articles=since_last_notification,
                     previous_24h_articles=previous_24_hours,
                     time_since_last=time_since_last,
-                    decision_response=content,
-                    final_decision=result
                 )
-            except Exception as e:
-                logger.error(f"Failed to log notification decision response: {e}")
-            
-            # Validate structure
-            required_fields = ['should_notify_now', 'compact_push', 'full_message']
-            for field in required_fields:
-                if field not in result:
-                    logger.error(f"Missing required field in LLM response: {field}")
-                    return None
-            
-            # Process compact push with intelligent truncation
-            compact_push = str(result['compact_push'])
-            if len(compact_push) > 60:
-                # Try to find natural break point (sentence end, comma, etc.)
-                truncate_at = 57  # Leave room for "..."
-                for break_char in ['.', '!', ',', ';']:
-                    pos = compact_push.rfind(break_char, 0, truncate_at)
-                    if pos > 30:  # Don't break too early
-                        truncate_at = pos + 1
-                        break
-                compact_push = compact_push[:truncate_at] + "..."
-            
-            # Create decision object
-            decision = NotificationDecision(
-                should_notify=bool(result['should_notify_now']),
-                compact_push=compact_push,
-                full_message=str(result['full_message']),
-                fresh_articles_count=len(fresh_articles),
-                since_last_count=len(since_last_notification),
-                previous_24h_count=len(previous_24_hours),
-                time_since_last_notification=time_since_last,
-                analysis_timestamp=datetime.now(timezone.utc),
-                raw_llm_response=result
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to log notification decision inputs: %s", exc)
+
+        logger.info("Sending 3-bucket analysis to LLM")
+        try:
+            result = self.openai_client.analyze_notification_decision(
+                fresh_articles,
+                since_last_notification,
+                previous_24_hours,
+                time_since_last,
             )
-            
-            logger.info(f"LLM decision: {'NOTIFY' if decision.should_notify else 'SKIP'}")
-            if decision.should_notify:
-                logger.info(f"Push message: {decision.compact_push}")
-            
-            return decision
-            
-        except Exception as e:
-            logger.error(f"LLM analysis failed: {e}")
+        except Exception as exc:  # noqa: BLE001
+            logger.error("LLM structured analysis failed: %s", exc)
             return None
+
+        if llm_logger:
+            try:
+                llm_logger.log_notification_decision(
+                    fresh_articles=fresh_articles,
+                    since_last_articles=since_last_notification,
+                    previous_24h_articles=previous_24_hours,
+                    time_since_last=time_since_last,
+                    decision_response=json.dumps(result, ensure_ascii=False),
+                    final_decision=result,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to log notification decision response: %s", exc)
+
+        required_fields = ["should_notify_now", "compact_push", "full_message"]
+        for field in required_fields:
+            if field not in result:
+                logger.error("Missing required field in LLM response: %s", field)
+                return None
+
+        compact_push = str(result['compact_push'])
+        if len(compact_push) > 60:
+            truncate_at = 57
+            for break_char in ['.', '!', ',', ';']:
+                pos = compact_push.rfind(break_char, 0, truncate_at)
+                if pos > 30:
+                    truncate_at = pos + 1
+                    break
+            compact_push = compact_push[:truncate_at] + "..."
+
+        decision = NotificationDecision(
+            should_notify=bool(result['should_notify_now']),
+            compact_push=compact_push,
+            full_message=str(result['full_message']),
+            fresh_articles_count=len(fresh_articles),
+            since_last_count=len(since_last_notification),
+            previous_24h_count=len(previous_24_hours),
+            time_since_last_notification=time_since_last,
+            analysis_timestamp=datetime.now(timezone.utc),
+            raw_llm_response=result
+        )
+        
+        logger.info("LLM decision: %s", "NOTIFY" if decision.should_notify else "SKIP")
+        if decision.should_notify:
+            logger.info("Push message: %s", decision.compact_push)
+
+        return decision
     
     def send_notifications_if_approved(self, 
                                      decision: NotificationDecision,
@@ -239,85 +205,151 @@ class SmartNotifier:
             logger.info("LLM decided not to send notifications")
             return False
         
-        try:
-            # Determine urgency level (simple heuristic based on message content)
-            urgency = "normal"
-            urgent_keywords = ['פיגוע', 'רצח', 'מלחמה', 'טיל', 'חירום', 'דחוף']
-            message_text = (decision.compact_push + " " + decision.full_message).lower()
-            
-            if any(keyword in message_text for keyword in urgent_keywords):
-                urgency = "breaking"
-            elif decision.fresh_articles_count >= 3:
-                urgency = "high"
-            
-            # Apply scheduling logic
-            send_now, scheduled_time = self.scheduler.get_notification_decision(urgency)
-            
-            if not send_now:
-                logger.info(f"Notifications scheduled for: {scheduled_time}")
-                # In a full implementation, we'd store this for later execution
-                # For now, we'll skip scheduling and just log
-                return False
-            
-            # Send notifications immediately
-            sent_any = False
-            
-            # Send to Slack
-            if slack_client:
-                try:
-                    # Send full message to Slack
-                    success = slack_client.send_direct_message(decision.full_message)
-                    if success:
-                        logger.info("Successfully sent to Slack")
-                        sent_any = True
-                    else:
-                        logger.error("Failed to send to Slack")
-                except Exception as e:
-                    logger.error(f"Slack sending failed: {e}")
-            
-            # Send push notification (would need proper push service)
-            if push_client:
-                try:
-                    # Create a mock article with just the compact message for push notification
-                    mock_articles = [{"title": decision.compact_push, "source": "", "published": datetime.now()}]
-                    success = push_client.send_news_notification(mock_articles, None, "headlines")
-                    if success:
-                        logger.info("Successfully sent push notification")
-                        sent_any = True
-                    else:
-                        logger.error("Failed to send push notification")
-                except Exception as e:
-                    logger.error(f"Push notification failed: {e}")
-            
-            # Log final notification results
+        urgency = "normal"
+        urgent_keywords = ["פיגוע", "רצח", "מלחמה", "טיל", "חירום", "דחוף"]
+        message_text = (decision.compact_push + " " + decision.full_message).lower()
+
+        if any(keyword in message_text for keyword in urgent_keywords):
+            urgency = "breaking"
+        elif decision.fresh_articles_count >= 3:
+            urgency = "high"
+
+        send_now, scheduled_time = self.scheduler.get_notification_decision(urgency)
+
+        if not send_now and scheduled_time:
+            logger.info(
+                "Notifications scheduled for: %s",
+                scheduled_time.strftime("%Y-%m-%d %H:%M:%S %Z"),
+            )
+            self._schedule_notification_for_later(decision, scheduled_time, slack_client, push_client)
+            return False
+        if not send_now:
+            logger.info("LLM approved notification but scheduler skipped (no slot)")
+            return False
+
+        sent_any = False
+
+        if slack_client:
             try:
-                from core.llm_logger import get_llm_logger
-                llm_logger = get_llm_logger()
-                
-                success_status = {}
+                if slack_client.send_direct_message(decision.full_message):
+                    logger.info("Successfully sent to Slack")
+                    sent_any = True
+                else:
+                    logger.error("Failed to send to Slack")
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Slack sending failed: %s", exc)
+
+        if push_client:
+            try:
+                mock_articles = [
+                    {
+                        "title": decision.compact_push,
+                        "source": "",
+                        "published": datetime.now(),
+                    }
+                ]
+                if push_client.send_news_notification(mock_articles, None, "headlines"):
+                    logger.info("Successfully sent push notification")
+                    sent_any = True
+                else:
+                    logger.error("Failed to send push notification")
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Push notification failed: %s", exc)
+
+        llm_logger = self._get_llm_logger()
+        if llm_logger:
+            try:
+                success_status: Dict[str, bool] = {}
                 if slack_client:
-                    success_status['slack'] = sent_any  # Simplified for now
+                    success_status["slack"] = sent_any
                 if push_client:
-                    success_status['push'] = sent_any   # Simplified for now
-                
+                    success_status["push"] = sent_any
+
                 llm_logger.log_notifications_sent(
                     compact_push=decision.compact_push,
                     full_message=decision.full_message,
-                    success_status=success_status
+                    success_status=success_status,
                 )
-            except Exception as e:
-                logger.error(f"Failed to log notification results: {e}")
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to log notification results: %s", exc)
+
+        if sent_any:
+            self.state_manager.update_last_notification_timestamp()
+            logger.info("Updated last notification timestamp")
+
+        return sent_any
+    
+    def _schedule_notification_for_later(self, decision: NotificationDecision, 
+                                       scheduled_time: datetime, 
+                                       slack_client=None, 
+                                       push_client=None) -> None:
+        """
+        Store notification for later execution at scheduled time.
+        
+        In a production system, this would integrate with a job queue
+        or scheduling system like Celery, APScheduler, or cloud functions.
+        
+        Args:
+            decision: The notification decision to execute later
+            scheduled_time: When to send the notification
+            slack_client: Slack client for sending
+            push_client: Push client for sending
+        """
+        try:
+            # Store the scheduled notification in the state manager
+            notification_data = {
+                "scheduled_time": scheduled_time.isoformat(),
+                "compact_push": decision.compact_push,
+                "full_message": decision.full_message,
+                "urgency": "normal",  # Could be extracted from decision
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
             
-            # Update notification timestamp if any notification was sent
-            if sent_any:
-                self.state_manager.update_last_notification_timestamp()
-                logger.info("Updated last notification timestamp")
+            # In a real implementation, you'd store this in a database
+            # and have a background worker check for due notifications
+            logger.info("Stored scheduled notification: %s", notification_data)
+
+            logger.info(
+                "Notification scheduled for %s: %s",
+                scheduled_time,
+                decision.compact_push,
+            )
+
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Failed to schedule notification: %s", exc)
+    
+    def process_scheduled_notifications(self, slack_client=None, push_client=None) -> int:
+        """
+        Process any notifications that are due to be sent.
+        
+        This method would typically be called by a background worker
+        or cron job to check for and send scheduled notifications.
+        
+        Args:
+            slack_client: Slack client for sending
+            push_client: Push client for sending
             
-            return sent_any
+        Returns:
+            Number of notifications sent
+        """
+        try:
+            # In a real implementation, query database for due notifications
+            # For now, this is a placeholder
+            logger.info("Checking for scheduled notifications to send...")
             
-        except Exception as e:
-            logger.error(f"Failed to send notifications: {e}")
-            return False
+            # This would typically:
+            # 1. Query database for notifications where scheduled_time <= now
+            # 2. Send each notification
+            # 3. Mark as sent or delete from queue
+            # 4. Handle failures with retry logic
+            
+            sent_count = 0
+            logger.info("Processed %d scheduled notifications", sent_count)
+            return sent_count
+
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Failed to process scheduled notifications: %s", exc)
+            return 0
     
     def process_news_for_notifications(self, 
                                      fresh_articles: List[Dict[str, Any]],
@@ -337,22 +369,28 @@ class SmartNotifier:
         try:
             # Step 1: Prepare 3-bucket data
             fresh, since_last, previous_24h, time_since = self.prepare_3_bucket_data(fresh_articles)
-            
-            # Step 2: Analyze with LLM
+
             decision = self.analyze_with_llm(fresh, since_last, previous_24h, time_since)
             if not decision:
                 logger.error("LLM analysis failed")
                 return None
-            
-            # Step 3: Send notifications if approved
+
             if decision.should_notify:
                 sent = self.send_notifications_if_approved(decision, slack_client, push_client)
-                logger.info(f"Notifications {'sent' if sent else 'scheduled/failed'}")
-            
+                logger.info("Notifications %s", "sent" if sent else "scheduled/failed")
+
             return decision
-            
-        except Exception as e:
-            logger.error(f"Smart notification process failed: {e}")
+
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Smart notification process failed: %s", exc)
+            return None
+
+    def _get_llm_logger(self):
+        try:
+            from ..llm_logger import get_llm_logger
+
+            return get_llm_logger()
+        except Exception:  # noqa: BLE001
             return None
 
 

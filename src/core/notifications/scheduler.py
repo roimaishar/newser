@@ -118,26 +118,32 @@ class NotificationScheduler:
             return False, next_slot
     
     def format_time_since(self, since_time: datetime) -> str:
-        """Format time difference in Hebrew for LLM context."""
+        """Format time difference in English for LLM context."""
         if since_time is None:
-            return "אין מידע"
-        
+            return "no data"
+
         now = datetime.now(timezone.utc)
         if since_time.tzinfo is None:
             since_time = since_time.replace(tzinfo=timezone.utc)
-        
+
         diff = now - since_time
-        
+
         if diff.days > 0:
-            return f"{diff.days} ימים"
-        elif diff.seconds >= 3600:
+            days = diff.days
+            unit = "day" if days == 1 else "days"
+            return f"{days} {unit}"
+
+        if diff.seconds >= 3600:
             hours = diff.seconds // 3600
-            return f"{hours} שעות"
-        elif diff.seconds >= 60:
+            unit = "hour" if hours == 1 else "hours"
+            return f"{hours} {unit}"
+
+        if diff.seconds >= 60:
             minutes = diff.seconds // 60
-            return f"{minutes} דקות"
-        else:
-            return "פחות מדקה"
+            unit = "minute" if minutes == 1 else "minutes"
+            return f"{minutes} {unit}"
+
+        return "less than a minute"
     
     def get_stats(self) -> dict:
         """Get scheduler statistics for monitoring."""

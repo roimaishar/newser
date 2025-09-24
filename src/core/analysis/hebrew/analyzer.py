@@ -10,18 +10,14 @@ High-level orchestrator that combines:
 - Novelty detection and update filtering
 """
 
-import json
 import logging
 import hashlib
 from datetime import datetime
-from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass
+from typing import List, Dict, Any, Optional
 
 from ...models.article import Article
 from ...models.analysis import HebrewAnalysisResult
-from ...state_manager import StateManager, KnownItem
-from .prompts import NewsAnalysisPrompts
-from ...json_validator import validate_hebrew_analysis
+from ...state_manager import StateManager
 
 logger = logging.getLogger(__name__)
 
@@ -37,23 +33,14 @@ class HebrewNewsAnalyzer:
     4. Return structured Hebrew results
     """
     
-    def __init__(self, 
-                 state_manager: StateManager,
-                 openai_client = None):
-        """
-        Initialize Hebrew analyzer.
-        
-        Args:
-            state_manager: State manager for persistent storage
-            openai_client: OpenAI client (creates new one if None)
-        """
+    def __init__(self, state_manager: StateManager, openai_client: Optional['OpenAIClient'] = None) -> None:
+        """Initialize Hebrew analyzer with structured OpenAI client."""
         self.state_manager = state_manager
-        self.openai_client = openai_client
-        
-        if self.openai_client is None:
-            # Import here to avoid circular imports
+        if openai_client is None:
             from integrations.openai_client import OpenAIClient
             self.openai_client = OpenAIClient()
+        else:
+            self.openai_client = openai_client
         
     def analyze_articles_thematic(self, articles: List[Article], hours: int = 24) -> HebrewAnalysisResult:
         """
@@ -84,82 +71,59 @@ class HebrewNewsAnalyzer:
                 analysis_timestamp=datetime.now()
             )
         
-        try:
-            # Convert articles to dicts for prompt processing
-            article_dicts = [article.to_dict() for article in articles]
-            
-            # Log raw articles data
+        article_dicts = [article.to_dict() for article in articles]
+        llm_logger = self._get_llm_logger()
+
+        if llm_logger:
             try:
-                from core.llm_logger import get_llm_logger
-                llm_logger = get_llm_logger()
                 llm_logger.log_raw_articles(article_dicts, f"Thematic Analysis Input ({len(articles)} articles)")
-            except Exception as e:
-                logger.error(f"Failed to log raw articles: {e}")
-            
-            # Generate Hebrew analysis prompt
-            prompt = NewsAnalysisPrompts.get_analysis_prompt(article_dicts, hours=hours)
-            
-            # Make API request
-            data = {
-                "model": self.openai_client.model,
-                "messages": [
-                    {"role": "system", "content": NewsAnalysisPrompts.SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ],
-                "max_tokens": self.openai_client.max_tokens,
-                "temperature": self.openai_client.temperature
-            }
-            
-            response = self.openai_client._make_api_request("chat/completions", data)
-            content = response['choices'][0]['message']['content'].strip()
-            
-            # Parse Hebrew JSON response
-            analysis_data = self._parse_ai_response(content)
-            
-            # Log parsed analysis results
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to log raw articles: %s", exc)
+
+        analysis_data = self.openai_client.analyze_thematic(article_dicts, hours=hours)
+
+        if llm_logger:
             try:
-                from core.llm_logger import get_llm_logger
-                llm_logger = get_llm_logger()
                 llm_logger.log_parsed_analysis(analysis_data, "thematic_analysis")
-            except Exception as e:
-                logger.error(f"Failed to log parsed analysis: {e}")
-            
-            # Extract journalism-focused analysis
-            mobile_headline = analysis_data.get('mobile_headline', 'עדכון חדשות')
-            story_behind = analysis_data.get('story_behind_story', 'ניתוח הושלם') 
-            connection_threads = analysis_data.get('connection_threads', [])
-            reader_impact = analysis_data.get('reader_impact', '')
-            trend_signal = analysis_data.get('trend_signal', '')
-            
-            # Create mobile-first summary combining headline and story
-            summary = f"{mobile_headline}"
-            if story_behind:
-                summary += f" • {story_behind}"
-            
-            # Build bulletins for mobile display
-            bulletins = mobile_headline
-            if reader_impact:
-                bulletins += f"\n💡 {reader_impact}"
-            
-            return HebrewAnalysisResult(
-                has_new_content=True,
-                analysis_type="thematic",
-                summary=summary,
-                key_topics=connection_threads,  # Use connection threads as topics
-                sentiment='ניטרלי',  # Focus on analysis, not sentiment
-                insights=[reader_impact, trend_signal] if reader_impact or trend_signal else [],
-                new_events=[],
-                updated_events=[],
-                bulletins=bulletins,
-                articles_analyzed=len(articles),
-                confidence=0.8,
-                analysis_timestamp=datetime.now()
-            )
-            
-        except Exception as e:
-            logger.error(f"Hebrew thematic analysis failed: {e}")
-            # Re-raise the exception instead of returning fallback
-            raise RuntimeError(f"LLM thematic analysis failed: {str(e)}") from e
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to log parsed analysis: %s", exc)
+
+        mobile_headline = analysis_data.get("mobile_headline", "עדכון חדשות")
+        story_behind = analysis_data.get("story_behind_story", "")
+        connection_threads = analysis_data.get("connection_threads", []) or []
+        reader_impact = analysis_data.get("reader_impact", "")
+        trend_signal = analysis_data.get("trend_signal", "")
+
+        summary_parts = [mobile_headline]
+        if story_behind:
+            summary_parts.append(story_behind)
+        summary = " • ".join(part for part in summary_parts if part)
+
+        bulletins_lines = [mobile_headline]
+        if reader_impact:
+            bulletins_lines.append(f"💡 {reader_impact}")
+        bulletins = "\n".join(bulletins_lines)
+
+        insights: List[str] = []
+        if reader_impact:
+            insights.append(reader_impact)
+        if trend_signal:
+            insights.append(trend_signal)
+
+        return HebrewAnalysisResult(
+            has_new_content=bool(connection_threads or insights),
+            analysis_type="thematic",
+            summary=summary,
+            key_topics=connection_threads or ["חדשות"],
+            sentiment="ניטרלי",
+            insights=insights,
+            new_events=[],
+            updated_events=[],
+            bulletins=bulletins,
+            articles_analyzed=len(articles),
+            confidence=0.8,
+            analysis_timestamp=datetime.now(),
+        )
     
     def analyze_articles_with_novelty(self, articles: List[Article], hours: int = 12) -> HebrewAnalysisResult:
         """
@@ -190,115 +154,76 @@ class HebrewNewsAnalyzer:
                 analysis_timestamp=datetime.now()
             )
         
-        try:
-            # Get known events for comparison
-            known_events = self.state_manager.get_known_events()
-            known_items_dicts = [
-                {
-                    "event_id": event.event_id,
-                    "baseline": event.baseline,
-                    "last_update": event.last_update.strftime("%Y-%m-%d %H:%M"),
-                    "key_facts": event.key_facts
-                }
-                for event in known_events
-            ]
-            
-            # Convert articles to dicts
-            article_dicts = [article.to_dict() for article in articles]
-            
-            # Log raw articles data for novelty analysis
-            try:
-                from core.llm_logger import get_llm_logger
-                llm_logger = get_llm_logger()
-                llm_logger.log_raw_articles(article_dicts, f"Novelty Analysis Input ({len(articles)} articles, {len(known_events)} known events)")
-            except Exception as e:
-                logger.error(f"Failed to log raw articles: {e}")
-            
-            # Generate novelty detection prompt
-            prompt = NewsAnalysisPrompts.get_update_prompt(
-                article_dicts, known_items_dicts, hours=hours
-            )
-            
-            # Make API request
-            data = {
-                "model": self.openai_client.model,
-                "messages": [
-                    {"role": "system", "content": NewsAnalysisPrompts.SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ],
-                "max_tokens": self.openai_client.max_tokens * 2,  # Longer prompt needs more tokens
-                "temperature": self.openai_client.temperature
+        known_events = self.state_manager.get_known_events()
+        known_items = [
+            {
+                "event_id": event.event_id,
+                "baseline": event.baseline,
+                "last_update": event.last_update.strftime("%Y-%m-%d %H:%M"),
+                "key_facts": event.key_facts,
             }
-            
-            response = self.openai_client._make_api_request("chat/completions", data)
-            content = response['choices'][0]['message']['content'].strip()
-            
-            # Parse and validate novelty analysis response
-            analysis_data = validate_hebrew_analysis(content, "updates")
-            
-            # Log parsed analysis results
+            for event in known_events
+        ]
+
+        article_dicts = [article.to_dict() for article in articles]
+        llm_logger = self._get_llm_logger()
+
+        if llm_logger:
             try:
-                from core.llm_logger import get_llm_logger
-                llm_logger = get_llm_logger()
+                llm_logger.log_raw_articles(
+                    article_dicts,
+                    f"Novelty Analysis Input ({len(articles)} articles, {len(known_events)} known events)",
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to log raw articles: %s", exc)
+
+        analysis_data = self.openai_client.analyze_novelty(article_dicts, known_items, hours=hours)
+
+        if llm_logger:
+            try:
                 llm_logger.log_parsed_analysis(analysis_data, "novelty_detection")
-            except Exception as e:
-                logger.error(f"Failed to log parsed analysis: {e}")
-            
-            # Extract results
-            has_new = analysis_data.get('has_new', False)
-            items = analysis_data.get('items', [])
-            bulletins = analysis_data.get('bulletins_he', '')
-            
-            # Separate new vs updated events
-            new_events = [item for item in items if item.get('status') == 'חדש']
-            updated_events = [item for item in items if item.get('status') == 'עדכון']
-            
-            # Update state with new/updated events
-            self._update_state_from_analysis(new_events + updated_events)
-            
-            # Create summary from bulletins or items
-            summary = bulletins
-            if not summary and items:
-                summary = f"זוהו {len(new_events)} אירועים חדשים ו-{len(updated_events)} עדכונים"
-            elif not summary:
-                summary = "לא זוהו עדכונים משמעותיים"
-            
-            return HebrewAnalysisResult(
-                has_new_content=has_new,
-                analysis_type="updates",
-                summary=summary,
-                key_topics=self._extract_topics_from_items(items),
-                sentiment=self._analyze_sentiment_from_items(items),
-                insights=self._extract_insights_from_items(items),
-                new_events=new_events,
-                updated_events=updated_events,
-                bulletins=bulletins,
-                articles_analyzed=len(articles),
-                confidence=self._calculate_confidence_from_items(items),
-                analysis_timestamp=datetime.now()
-            )
-            
-        except Exception as e:
-            logger.error(f"Hebrew novelty analysis failed: {e}")
-            # Re-raise the exception instead of returning fallback
-            raise RuntimeError(f"LLM novelty analysis failed: {str(e)}") from e
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to log parsed analysis: %s", exc)
+
+        has_new = analysis_data.get("has_new", False)
+        items = analysis_data.get("items", []) or []
+        bulletins = analysis_data.get("bulletins_he", "")
+
+        new_events = [item for item in items if item.get("status") == "חדש"]
+        updated_events = [item for item in items if item.get("status") == "עדכון"]
+
+        self._update_state_from_analysis(new_events + updated_events)
+
+        if not bulletins:
+            if items:
+                bulletins = (
+                    f"זוהו {len(new_events)} אירועים חדשים ו-{len(updated_events)} עדכונים"
+                )
+            else:
+                bulletins = "לא זוהו עדכונים משמעותיים"
+
+        return HebrewAnalysisResult(
+            has_new_content=has_new,
+            analysis_type="updates",
+            summary=bulletins,
+            key_topics=self._extract_topics_from_items(items),
+            sentiment=self._analyze_sentiment_from_items(items),
+            insights=self._extract_insights_from_items(items),
+            new_events=new_events,
+            updated_events=updated_events,
+            bulletins=bulletins,
+            articles_analyzed=len(articles),
+            confidence=self._calculate_confidence_from_items(items),
+            analysis_timestamp=datetime.now(),
+        )
     
-    def _parse_ai_response(self, content: str) -> Dict[str, Any]:
-        """Parse AI response, handling common JSON formatting issues."""
+    def _get_llm_logger(self):
         try:
-            # Clean up markdown code blocks
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0].strip()
-            
-            return json.loads(content)
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse AI response as JSON: {e}")
-            logger.debug(f"Raw response: {content}")
-            # Re-raise the exception instead of returning fallback
-            raise RuntimeError(f"LLM returned invalid JSON: {str(e)}") from e
+            from ...llm_logger import get_llm_logger
+
+            return get_llm_logger()
+        except Exception:  # noqa: BLE001
+            return None
     
     def _update_state_from_analysis(self, items: List[Dict[str, Any]]) -> None:
         """Update state manager with new/updated events from analysis."""
@@ -314,8 +239,8 @@ class HebrewNewsAnalyzer:
             events_to_update.append(event_hash)
         
         if events_to_update:
-            self.state_manager.update_known_items(events_to_update, item_type='event')
-            logger.info(f"Updated state with {len(events_to_update)} events")
+            self.state_manager.update_known_items(events_to_update, item_type="event")
+            logger.info("Updated state with %d events", len(events_to_update))
     
     def _extract_topics_from_items(self, items: List[Dict[str, Any]]) -> List[str]:
         """Extract key topics from analysis items."""

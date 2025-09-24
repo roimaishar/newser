@@ -10,6 +10,8 @@ import json
 import logging
 from typing import Dict, Any, Optional, Union
 
+from .text_sanitizer import preprocess_llm_response
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,15 +38,18 @@ class HebrewAnalysisValidator:
         Raises:
             JSONValidationError: If validation fails completely
         """
-        # Step 1: Try parsing raw output directly first (LLM often returns pure JSON)
+        # Step 1: Preprocess for Hebrew quote normalization
+        processed_output = preprocess_llm_response(raw_output)
+        
+        # Step 2: Try parsing processed output directly first (LLM often returns pure JSON)
         try:
-            data = json.loads(raw_output.strip())
-            logger.info("Successfully parsed raw LLM output as JSON")
+            data = json.loads(processed_output.strip())
+            logger.info("Successfully parsed processed LLM output as JSON")
         except json.JSONDecodeError:
-            # Step 2: Extract JSON from potentially mixed output
-            json_str = HebrewAnalysisValidator._extract_json(raw_output)
+            # Step 3: Extract JSON from potentially mixed output
+            json_str = HebrewAnalysisValidator._extract_json(processed_output)
             
-            # Step 3: Parse extracted JSON
+            # Step 4: Parse extracted JSON
             try:
                 data = json.loads(json_str)
                 logger.info("Successfully parsed extracted JSON")
@@ -56,7 +61,7 @@ class HebrewAnalysisValidator:
                 # Attempt repair
                 data = HebrewAnalysisValidator._repair_json(json_str)
         
-        # Step 3: Validate schema
+        # Step 5: Validate schema
         if analysis_type == "updates":
             return HebrewAnalysisValidator._validate_updates_schema(data)
         else:

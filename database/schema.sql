@@ -63,6 +63,37 @@ CREATE TABLE run_metrics (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Enable Row Level Security on all tables
+ALTER TABLE public.articles    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.analyses    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.known_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.run_metrics ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for service role access
+CREATE POLICY service_role_full_access_articles
+  ON public.articles
+  FOR ALL
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY service_role_full_access_analyses
+  ON public.analyses
+  FOR ALL
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY service_role_full_access_known_items
+  ON public.known_items
+  FOR ALL
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY service_role_full_access_run_metrics
+  ON public.run_metrics
+  FOR ALL
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
+
 -- Index for metrics analysis
 CREATE INDEX idx_run_metrics_created_at ON run_metrics(created_at DESC);
 CREATE INDEX idx_run_metrics_success ON run_metrics(success);
