@@ -34,7 +34,7 @@ THEMATIC_ANALYSIS_SCHEMA = {
             "description": "אות מגמה עתידית"
         }
     },
-    "required": ["mobile_headline", "story_behind_story"],
+    "required": ["mobile_headline", "story_behind_story", "connection_threads", "reader_impact", "trend_signal"],
     "additionalProperties": False
 }
 
@@ -85,7 +85,7 @@ NOVELTY_ANALYSIS_SCHEMA = {
                         "description": "רמת ביטחון בניתוח"
                     }
                 },
-                "required": ["event_id", "status", "lede_he", "confidence"],
+                "required": ["event_id", "status", "lede_he", "significance_he", "what_changed_he", "evidence", "confidence"],
                 "additionalProperties": False
             }
         },
@@ -94,7 +94,7 @@ NOVELTY_ANALYSIS_SCHEMA = {
             "description": "עדכונים מרוכזים בעברית"
         }
     },
-    "required": ["has_new", "items"],
+    "required": ["has_new", "items", "bulletins_he"],
     "additionalProperties": False
 }
 
@@ -124,7 +124,7 @@ NOTIFICATION_DECISION_SCHEMA = {
             "description": "רמת דחיפות"
         }
     },
-    "required": ["should_notify_now", "compact_push", "full_message"],
+    "required": ["should_notify_now", "compact_push", "full_message", "reasoning", "urgency_level"],
     "additionalProperties": False
 }
 
