@@ -9,6 +9,7 @@ A Python application that aggregates news headlines from Israeli news sources (Y
 - ✅ **Deduplication** - Smart duplicate detection using title similarity and URL matching
 - ✅ **Security Validation** - Input sanitization and URL validation
 - ✅ **AI Analysis** - OpenAI-powered summarization and insights (optional)
+- ✅ **Structured LLM Outputs** - JSON-schema validation with Hebrew text sanitization
 - ✅ **Slack Integration** - Formatted notifications with rich content (optional)
 - ✅ **GitHub Actions** - Automated scheduling and deployment
 - ✅ **Timezone Handling** - Asia/Jerusalem timezone support
@@ -87,6 +88,14 @@ The GitHub Actions workflow runs automatically:
 3. Add to workspace and copy webhook URL
 4. Add to GitHub Secrets as `SLACK_WEBHOOK_URL`
 
+## Testing
+
+```bash
+python -m pytest tests/integration -v
+```
+
+Run inside the project virtualenv after installing `requirements.txt`. The integration suite covers the OpenAI structured output flow, smart notification scheduler, and Hebrew text sanitization.
+
 ## Architecture
 
 ```
@@ -95,11 +104,15 @@ newser/
 │   ├── core/
 │   │   ├── feed_parser.py      # RSS parsing with Hebrew support
 │   │   ├── deduplication.py    # Content deduplication
-│   │   └── security.py         # Input validation & sanitization
+│   │   ├── security.py         # Input validation & sanitization
+│   │   ├── text_sanitizer.py   # Hebrew quote normalization & preprocessing
+│   │   └── schemas.py          # Central JSON schemas for LLM outputs
 │   ├── integrations/
 │   │   ├── openai_client.py    # AI analysis integration
 │   │   └── slack_notifier.py   # Slack notifications
 │   └── main.py                 # CLI and orchestration
+├── tests/
+│   └── integration/            # Integration tests for analysis & notifications
 ├── .github/workflows/
 │   └── news-aggregator.yml     # Automated workflow
 ├── run.py                      # Entry point

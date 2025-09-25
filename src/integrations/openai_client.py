@@ -47,7 +47,7 @@ class OpenAIClient:
             raise ValueError("OpenAI API key not provided and not found in OPENAI_API_KEY environment variable")
         
         self.client = OpenAI(api_key=api_key)
-        self.model = "gpt-4o-mini"  # Cost-effective model for text analysis
+        self.model = "gpt-4o"
         self.max_tokens = 1000
         self.temperature = 0.3  # Lower temperature for more consistent analysis
         
