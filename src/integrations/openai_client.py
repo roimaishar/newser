@@ -192,6 +192,41 @@ class OpenAIClient:
         content = response['choices'][0]['message']['content']
         return json.loads(content)
     
+    def _validate_and_fix_schema(self, response_data: Dict[str, Any], hours: int) -> Dict[str, Any]:
+        """Validate and fix schema violations in LLM response."""
+        
+        # Ensure time_window_hours is present
+        if "time_window_hours" not in response_data:
+            response_data["time_window_hours"] = hours
+            logger.info(f"Added missing time_window_hours: {hours}")
+        
+        # Strict validation - fail on critical errors
+        valid_statuses = {"new", "update", "duplicate"}
+        for i, item in enumerate(response_data.get("items", [])):
+            # Check status
+            status = item.get("status")
+            if status not in valid_statuses:
+                raise ValueError(f"Item {i+1}: Invalid status '{status}' - must be English: {valid_statuses}")
+            
+            # Check date format in event_id and lede_he
+            event_id = item.get("event_id", "")
+            lede_he = item.get("lede_he", "")
+            
+            # Event ID should start with 2025-09-28 (current date)
+            if not event_id.startswith("2025-09-28"):
+                raise ValueError(f"Item {i+1}: Invalid date in event_id '{event_id}' - must start with 2025-09-28")
+                
+            # Lede should start with 2025-09-28
+            if not lede_he.startswith("2025-09-28"):
+                raise ValueError(f"Item {i+1}: Invalid date in lede_he '{lede_he}' - must start with 2025-09-28")
+        
+        # Ensure bulletins_he exists
+        if "bulletins_he" not in response_data:
+            response_data["bulletins_he"] = "אין עדכונים"
+            logger.info("Added missing bulletins_he field")
+        
+        return response_data
+    
     def analyze_novelty(self, articles: List[Dict[str, str]], known_events: List[Dict[str, Any]], hours: int = 12) -> Dict[str, Any]:
         """
         Perform novelty detection analysis using structured outputs.
@@ -224,9 +259,14 @@ class OpenAIClient:
         schema = get_schema_by_type("novelty")
         response = self._make_structured_request(messages, schema, "novelty_detection")
         
-        # Parse JSON response (guaranteed to be valid due to structured output)
+        # Parse and validate JSON response
         content = response['choices'][0]['message']['content']
-        return json.loads(content)
+        parsed_response = json.loads(content)
+        
+        # Apply schema fixes
+        validated_response = self._validate_and_fix_schema(parsed_response, hours)
+        
+        return validated_response
     
     def analyze_notification_decision(self, fresh_articles: List[Dict[str, Any]], 
                                    since_last: List[Dict[str, Any]], 

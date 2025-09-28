@@ -1,0 +1,321 @@
+{
+  "date": "2025-09-28",
+  "created": "2025-09-28T14:18:44.831114",
+  "daily_totals": {
+    "runs": 6,
+    "articles_scraped": 31,
+    "articles_after_dedup": 27,
+    "analyses_completed": 4,
+    "slack_messages_sent": 4,
+    "successful_runs": 4,
+    "failed_runs": 2,
+    "avg_runtime": 11.493560109819684,
+    "avg_fetch_time": 1.1419508797781808,
+    "avg_analysis_time": 8.528378772735596
+  },
+  "runs": [
+    {
+      "run_id": "23c759c2",
+      "timestamp": "2025-09-28T14:18:44.831055",
+      "command": "news analyze --hours 1 --updates-only --slack",
+      "total_duration": 9.671389818191528,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1759058315.1633532,
+          "end_time": 1759058317.117374,
+          "duration": 1.9540207386016846,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1759058317.1174011,
+          "end_time": 1759058317.117632,
+          "duration": 0.0002307891845703125,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1759058317.1176379,
+          "end_time": 1759058317.122987,
+          "duration": 0.005349159240722656,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1759058317.3909109,
+          "end_time": 1759058324.231141,
+          "duration": 6.840230226516724,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "slack_notification",
+          "start_time": 1759058324.231167,
+          "end_time": 1759058324.607046,
+          "duration": 0.37587881088256836,
+          "success": true,
+          "error_message": null
+        }
+      ],
+      "articles_scraped": 3,
+      "articles_after_dedup": 3,
+      "analysis_completed": true,
+      "slack_sent": true,
+      "success": true
+    },
+    {
+      "run_id": "3b78f8b1",
+      "timestamp": "2025-09-28T16:05:15.460746",
+      "command": "news analyze --hours 1 --updates-only --slack",
+      "total_duration": 13.042587041854858,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1759064702.420885,
+          "end_time": 1759064703.651484,
+          "duration": 1.2305989265441895,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1759064703.651498,
+          "end_time": 1759064703.6516979,
+          "duration": 0.00019979476928710938,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1759064703.651705,
+          "end_time": 1759064703.657869,
+          "duration": 0.006164073944091797,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1759064704.973129,
+          "end_time": 1759064714.8685691,
+          "duration": 9.895440101623535,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "slack_notification",
+          "start_time": 1759064714.868584,
+          "end_time": 1759064715.232089,
+          "duration": 0.36350512504577637,
+          "success": true,
+          "error_message": null
+        }
+      ],
+      "articles_scraped": 4,
+      "articles_after_dedup": 4,
+      "analysis_completed": true,
+      "slack_sent": true,
+      "success": true
+    },
+    {
+      "run_id": "33c1225c",
+      "timestamp": "2025-09-28T16:15:51.226781",
+      "command": "news analyze --hours 1 --updates-only --slack",
+      "total_duration": 9.189318895339966,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1759065342.045414,
+          "end_time": 1759065343.2711391,
+          "duration": 1.2257251739501953,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1759065343.271151,
+          "end_time": 1759065343.2713542,
+          "duration": 0.00020313262939453125,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1759065343.271362,
+          "end_time": 1759065343.2776608,
+          "duration": 0.00629878044128418,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1759065344.1093068,
+          "end_time": 1759065350.66349,
+          "duration": 6.5541832447052,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "slack_notification",
+          "start_time": 1759065350.6635149,
+          "end_time": 1759065351.0329359,
+          "duration": 0.36942100524902344,
+          "success": true,
+          "error_message": null
+        }
+      ],
+      "articles_scraped": 6,
+      "articles_after_dedup": 5,
+      "analysis_completed": true,
+      "slack_sent": true,
+      "success": true
+    },
+    {
+      "run_id": "80a7d4c5",
+      "timestamp": "2025-09-28T16:16:41.904342",
+      "command": "news analyze --hours 1 --updates-only --slack",
+      "total_duration": 12.549071073532104,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1759065389.3575869,
+          "end_time": 1759065390.190637,
+          "duration": 0.8330502510070801,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1759065390.1906502,
+          "end_time": 1759065390.190868,
+          "duration": 0.00021767616271972656,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1759065390.1908748,
+          "end_time": 1759065390.1964018,
+          "duration": 0.005527019500732422,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1759065390.6903439,
+          "end_time": 1759065401.904311,
+          "duration": 11.213967084884644,
+          "success": false,
+          "error_message": "LLM analysis is required but failed: Item 1: Invalid status 'חדש' - must be English: {'duplicate', 'new', 'update'}"
+        }
+      ],
+      "articles_scraped": 6,
+      "articles_after_dedup": 5,
+      "analysis_completed": false,
+      "slack_sent": false,
+      "success": false
+    },
+    {
+      "run_id": "cca861cf",
+      "timestamp": "2025-09-28T16:17:20.075067",
+      "command": "news analyze --hours 1 --updates-only --slack",
+      "total_duration": 12.796358108520508,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1759065427.280607,
+          "end_time": 1759065428.309794,
+          "duration": 1.0291869640350342,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1759065428.309807,
+          "end_time": 1759065428.310024,
+          "duration": 0.00021696090698242188,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1759065428.31003,
+          "end_time": 1759065428.315397,
+          "duration": 0.0053670406341552734,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1759065428.883741,
+          "end_time": 1759065440.07504,
+          "duration": 11.191299200057983,
+          "success": false,
+          "error_message": "LLM analysis is required but failed: Item 1: Invalid date in event_id '2023-10-05_שומרון_חשד_פיגוע' - must start with 2025-09-28"
+        }
+      ],
+      "articles_scraped": 6,
+      "articles_after_dedup": 5,
+      "analysis_completed": false,
+      "slack_sent": false,
+      "success": false
+    },
+    {
+      "run_id": "d04169ff",
+      "timestamp": "2025-09-28T16:17:54.452545",
+      "command": "news analyze --hours 1 --updates-only --slack",
+      "total_duration": 11.603097915649414,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1759065462.851219,
+          "end_time": 1759065463.711756,
+          "duration": 0.860537052154541,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1759065463.711769,
+          "end_time": 1759065463.711991,
+          "duration": 0.0002219676971435547,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1759065463.712,
+          "end_time": 1759065463.715799,
+          "duration": 0.0037992000579833984,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1759065464.205879,
+          "end_time": 1759065473.881899,
+          "duration": 9.67602014541626,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "slack_notification",
+          "start_time": 1759065473.8819158,
+          "end_time": 1759065474.247964,
+          "duration": 0.36604809761047363,
+          "success": true,
+          "error_message": null
+        }
+      ],
+      "articles_scraped": 6,
+      "articles_after_dedup": 5,
+      "analysis_completed": true,
+      "slack_sent": true,
+      "success": true
+    }
+  ],
+  "last_updated": "2025-09-28T16:17:54.452872"
+}

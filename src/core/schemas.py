@@ -57,8 +57,8 @@ NOVELTY_ANALYSIS_SCHEMA = {
                     },
                     "status": {
                         "type": "string",
-                        "enum": ["חדש", "עדכון", "ללא שינוי"],
-                        "description": "סטטוס האירוע"
+                        "enum": ["new", "update", "duplicate"],
+                        "description": "Event status in English"
                     },
                     "lede_he": {
                         "type": "string",
