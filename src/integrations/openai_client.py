@@ -48,7 +48,7 @@ class OpenAIClient:
         
         self.client = OpenAI(api_key=api_key)
         self.model = "gpt-4o"
-        self.max_tokens = 1000
+        self.max_tokens = 2500
         self.temperature = 0.3  # Lower temperature for more consistent analysis
         
     def _make_structured_request(self, messages: List[Dict[str, str]], schema: Dict[str, Any], analysis_type: str = "unknown") -> Dict[str, Any]:
@@ -86,6 +86,16 @@ class OpenAIClient:
                     }
                 }
             )
+            
+            # Detect truncated responses early
+            finish_reason = getattr(response.choices[0], "finish_reason", None)
+            if finish_reason == "length":
+                logger.error(
+                    "OpenAI response for %s was truncated due to max_tokens=%s. Consider increasing the limit.",
+                    analysis_type,
+                    self.max_tokens,
+                )
+                raise ValueError("OpenAI response truncated (finish_reason=length)")
             
             # Convert to dict for compatibility
             result = {
