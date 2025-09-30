@@ -8,8 +8,8 @@ Handles all database operations related to news articles.
 import logging
 import hashlib
 from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Any, Optional
-from core.feed_parser import Article
+from typing import List, Dict, Any, Optional, Tuple
+from ..models.article import Article
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class ArticleService:
         """
         self.connection_manager = connection_manager
     
-    def store_articles(self, articles: List[Article]) -> int:
+    def store_articles(self, articles: List[Article]) -> Tuple[int, List[str]]:
         """
         Store articles in database with deduplication.
         
@@ -34,12 +34,13 @@ class ArticleService:
             articles: List of Article objects
             
         Returns:
-            Number of new articles stored
+            Tuple of (number of new articles stored, list of content hashes that were inserted)
         """
         if not articles:
-            return 0
+            return 0, []
         
         stored_count = 0
+        inserted_hashes = []
         
         try:
             with self.connection_manager.get_cursor() as cursor:
@@ -48,8 +49,8 @@ class ArticleService:
                     
                     # Insert with ON CONFLICT to handle duplicates
                     cursor.execute("""
-                        INSERT INTO articles (title, link, source, summary, published_at, content_hash, created_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO articles (title, link, source, summary, published_at, content_hash, created_at, full_text, fetch_status, full_text_fetched_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (content_hash) DO NOTHING
                         RETURNING id
                     """, (
@@ -59,14 +60,18 @@ class ArticleService:
                         article.summary,
                         article.published,
                         content_hash,
-                        datetime.now(timezone.utc)
+                        datetime.now(timezone.utc),
+                        getattr(article, 'full_text', '') or '',
+                        getattr(article, 'fetch_status', None) or 'pending',
+                        getattr(article, 'full_text_fetched_at', None)
                     ))
                     
                     if cursor.fetchone():
                         stored_count += 1
+                        inserted_hashes.append(content_hash)
                         
             logger.info(f"Stored {stored_count} new articles out of {len(articles)} provided")
-            return stored_count
+            return stored_count, inserted_hashes
             
         except Exception as e:
             logger.error(f"Failed to store articles: {e}")
@@ -85,7 +90,7 @@ class ArticleService:
         try:
             with self.connection_manager.get_cursor() as cursor:
                 cursor.execute("""
-                    SELECT title, link, source, summary, published_at, content_hash, created_at
+                    SELECT title, link, source, summary, published_at, content_hash, created_at, full_text, fetch_status, full_text_fetched_at
                     FROM articles
                     WHERE created_at >= %s
                     ORDER BY published_at DESC NULLS LAST, created_at DESC
@@ -112,7 +117,7 @@ class ArticleService:
         try:
             with self.connection_manager.get_cursor() as cursor:
                 cursor.execute("""
-                    SELECT title, link, source, summary, published_at, content_hash, created_at
+                    SELECT title, link, source, summary, published_at, content_hash, created_at, full_text, fetch_status, full_text_fetched_at
                     FROM articles
                     WHERE created_at BETWEEN %s AND %s
                     ORDER BY published_at DESC NULLS LAST, created_at DESC

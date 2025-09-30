@@ -9,8 +9,7 @@ Uses Supabase REST API over HTTPS.
 import logging
 import hashlib
 from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import asdict
+from typing import Dict, Any, List, Optional, Tuple
 
 from supabase import create_client, Client
 
@@ -82,7 +81,7 @@ class SupabaseApiAdapter:
     
     # Article Operations
     
-    def store_articles(self, articles: List[Article]) -> int:
+    def store_articles(self, articles: List[Article]) -> Tuple[int, List[str]]:
         """
         Store articles using Supabase API.
         
@@ -90,12 +89,13 @@ class SupabaseApiAdapter:
             articles: List of articles to store
             
         Returns:
-            Number of articles stored
+            Tuple of (number of articles stored, list of content hashes that were inserted)
         """
         if not articles:
-            return 0
+            return 0, []
         
         stored_count = 0
+        inserted_hashes = []
         
         try:
             for article in articles:
@@ -135,9 +135,10 @@ class SupabaseApiAdapter:
                 
                 if result.data:
                     stored_count += 1
+                    inserted_hashes.append(content_hash)
             
             logger.info(f"Stored {stored_count} new articles via API")
-            return stored_count
+            return stored_count, inserted_hashes
             
         except Exception as e:
             logger.error(f"Failed to store articles via API: {e}")

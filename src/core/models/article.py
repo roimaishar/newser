@@ -9,6 +9,19 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
 
+from dateutil import parser as date_parser
+
+
+def _parse_datetime_safe(value: Any) -> Optional[datetime]:
+    if isinstance(value, datetime):
+        return value
+    if not value:
+        return None
+    try:
+        return date_parser.parse(value)
+    except Exception:  # noqa: BLE001
+        return None
+
 
 @dataclass
 class Article:
@@ -28,6 +41,9 @@ class Article:
     event_id: str = ""
     significance: str = ""
     confidence: float = 0.0
+    full_text: str = ""
+    fetch_status: Optional[str] = None
+    full_text_fetched_at: Optional[datetime] = None
     
     # Metadata
     raw_published_str: Optional[str] = None
@@ -40,6 +56,9 @@ class Article:
         self.summary = self.summary.strip()
         self.hebrew_summary = self.hebrew_summary.strip()
         self.source = self.source.strip()
+        self.full_text = (self.full_text or "").strip()
+        if isinstance(self.fetch_status, str):
+            self.fetch_status = self.fetch_status.strip() or None
         
         # Ensure confidence is in valid range
         self.confidence = max(0.0, min(1.0, self.confidence))
@@ -57,7 +76,10 @@ class Article:
             'significance': self.significance,
             'confidence': self.confidence,
             'raw_published_str': self.raw_published_str,
-            'id_hint': self.id_hint
+            'id_hint': self.id_hint,
+            'full_text': self.full_text or "",
+            'fetch_status': self.fetch_status,
+            'full_text_fetched_at': self.full_text_fetched_at.isoformat() if self.full_text_fetched_at else None
         }
     
     @classmethod
@@ -76,15 +98,18 @@ class Article:
             title=data.get('title', ''),
             link=data.get('link', ''),
             source=data.get('source', ''),
-            published=published,
             summary=data.get('summary', ''),
             hebrew_summary=data.get('hebrew_summary', ''),
             event_id=data.get('event_id', ''),
             significance=data.get('significance', ''),
             confidence=data.get('confidence', 0.0),
+            full_text=data.get('full_text', '') or '',
+            fetch_status=data.get('fetch_status'),
+            full_text_fetched_at=_parse_datetime_safe(data.get('full_text_fetched_at')),
             raw_published_str=data.get('raw_published_str'),
             id_hint=data.get('id_hint')
         )
+
     
     def __repr__(self):
         return f"Article(title='{self.title[:50]}...', source='{self.source}', event_id='{self.event_id}')"

@@ -83,13 +83,39 @@ class NewsCommand(BaseCommand):
             else:
                 self.metrics.record_stat("articles_after_dedup", len(articles))
             
-            # Store articles in database
-            stored_count = self.database.store_articles(articles)
-            logger.info(f"Stored {stored_count} new articles in database")
+            # Store articles in database and get hashes of newly inserted ones
+            stored_count, inserted_hashes = self.database.store_articles(articles)
+            logger.info(f"Stored {stored_count} new articles in database (out of {len(articles)} scraped)")
+            
+            # Filter articles to only those that were actually stored (fresh articles)
+            fresh_articles = []
+            if stored_count > 0:
+                # Build hash lookup for efficient filtering
+                from core.state_manager import StateManager
+                inserted_hash_set = set(inserted_hashes)
+                
+                for article in articles:
+                    article_hash = StateManager.generate_content_hash(
+                        title=article.title,
+                        link=article.link,
+                        source=article.source
+                    )
+                    if article_hash in inserted_hash_set:
+                        fresh_articles.append(article)
+                
+                logger.info(f"Identified {len(fresh_articles)} fresh articles for analysis")
+                self.metrics.record_stat("fresh_articles", len(fresh_articles))
+                
+                # Queue new articles for content fetching (async)
+                self._queue_content_fetching(stored_count)
+            else:
+                logger.info("No new articles to analyze - all were duplicates")
+                self.metrics.record_stat("fresh_articles", 0)
             
             # Hebrew analysis (now default unless --no-analysis flag is used)
+            # Only analyze fresh articles, not duplicates
             hebrew_result = None
-            if not getattr(args, 'no_analysis', False) and articles:
+            if not getattr(args, 'no_analysis', False) and fresh_articles:
                 state_manager = self.state_manager
                 
                 with self.metrics.time_operation("hebrew_analysis"):
@@ -98,9 +124,9 @@ class NewsCommand(BaseCommand):
                         hebrew_analyzer = HebrewNewsAnalyzer(state_manager, openai_client)
                         
                         if getattr(args, 'updates_only', False):
-                            hebrew_result = hebrew_analyzer.analyze_articles_with_novelty(articles, hours=args.hours)
+                            hebrew_result = hebrew_analyzer.analyze_articles_with_novelty(fresh_articles, hours=args.hours)
                         else:
-                            hebrew_result = hebrew_analyzer.analyze_articles_thematic(articles, hours=args.hours)
+                            hebrew_result = hebrew_analyzer.analyze_articles_thematic(fresh_articles, hours=args.hours)
                         
                         self.metrics.record_stat("analysis_completed", True)
                         logger.info("Hebrew analysis completed successfully")
@@ -112,7 +138,8 @@ class NewsCommand(BaseCommand):
                         raise RuntimeError(f"LLM analysis is required but failed: {str(e)}") from e
             
             # Smart Notification System (new 3-bucket approach) - default enabled unless --no-slack
-            if not getattr(args, 'no_slack', False) and articles:
+            # Only send notifications for fresh articles
+            if not getattr(args, 'no_slack', False) and fresh_articles:
                 with self.metrics.time_operation("smart_notification"):
                     try:
                         from core.notifications.smart_notifier import create_smart_notifier
@@ -123,8 +150,8 @@ class NewsCommand(BaseCommand):
                             openai_client=self.create_openai_client()
                         )
                         
-                        # Convert articles to dicts for processing
-                        article_dicts = [article.to_dict() for article in articles]
+                        # Convert fresh articles to dicts for processing
+                        article_dicts = [article.to_dict() for article in fresh_articles]
                         
                         # Get Slack client for sending
                         slack_client = self.create_slack_notifier()
@@ -198,10 +225,11 @@ class NewsCommand(BaseCommand):
             self.data_manager.store_run_record(run_record)
             
             # Display results (now includes Hebrew analysis if available)
+            # Show fresh articles in the display
             if hebrew_result:
-                self._display_hebrew_analysis(articles, hebrew_result, args)
+                self._display_hebrew_analysis(fresh_articles if fresh_articles else articles, hebrew_result, args)
             else:
-                self._display_articles(articles, args.hours)
+                self._display_articles(fresh_articles if fresh_articles else articles, args.hours)
             
             self.metrics.end_run(success=True)
             return 0
@@ -507,3 +535,36 @@ class NewsCommand(BaseCommand):
             published=published,
             summary=article_dict.get('summary', '')
         )
+    
+    def _queue_content_fetching(self, stored_count: int):
+        """
+        Queue new articles for content fetching (async operation).
+        
+        Args:
+            stored_count: Number of articles that were stored
+        """
+        try:
+            from core.content.service import ContentService
+            
+            logger.info(f"Queuing {stored_count} new articles for content fetching")
+            
+            # Initialize content service with correct adapter
+            from core.adapters.supabase_api import SupabaseApiAdapter
+            supabase_api = SupabaseApiAdapter()
+            content_service = ContentService(supabase_api)
+            
+            # Fetch content for a limited number of articles to avoid overwhelming the system
+            max_fetch = min(stored_count, 10)  # Limit to 10 articles per run
+            
+            results = content_service.fetch_pending_content(max_fetch)
+            
+            if results['success'] > 0:
+                logger.info(f"Successfully fetched content for {results['success']} articles")
+            
+            if results['failed'] > 0:
+                logger.warning(f"Failed to fetch content for {results['failed']} articles")
+                
+        except Exception as e:
+            # Don't fail the main pipeline if content fetching fails
+            logger.warning(f"Content fetching failed (non-critical): {e}")
+            logger.debug("Content fetching error details:", exc_info=True)

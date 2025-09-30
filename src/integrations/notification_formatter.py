@@ -83,11 +83,18 @@ class NotificationFormatter:
         count = len(articles)
         time_str = datetime.now().strftime("%H:%M")
         
-        # Create numbered headlines list
+        # Create numbered headlines list - prioritize full content over titles
         headlines = []
         for i, article in enumerate(articles, 1):
             title = article.get('title', '')[:80]
-            headlines.append(f"{i}️⃣ {title}")
+            full_text = article.get('full_text', '')
+            
+            # Use full text excerpt if available for richer context
+            if full_text and len(full_text) > 100:
+                excerpt = full_text[:120] + "..." if len(full_text) > 120 else full_text
+                headlines.append(f"{i}️⃣ {title}\n   📄 {excerpt}")
+            else:
+                headlines.append(f"{i}️⃣ {title}")
         
         headlines_text = "\n".join(headlines)
         

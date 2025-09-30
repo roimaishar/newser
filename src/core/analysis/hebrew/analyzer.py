@@ -71,7 +71,8 @@ class HebrewNewsAnalyzer:
                 analysis_timestamp=datetime.now()
             )
         
-        article_dicts = [article.to_dict() for article in articles]
+        # Enhance articles with full content from database
+        article_dicts = self._enhance_articles_with_content([article.to_dict() for article in articles])
         llm_logger = self._get_llm_logger()
 
         if llm_logger:
@@ -165,7 +166,8 @@ class HebrewNewsAnalyzer:
             for event in known_events
         ]
 
-        article_dicts = [article.to_dict() for article in articles]
+        # Enhance articles with full content from database
+        article_dicts = self._enhance_articles_with_content([article.to_dict() for article in articles])
         llm_logger = self._get_llm_logger()
 
         if llm_logger:
@@ -324,3 +326,57 @@ class HebrewNewsAnalyzer:
         
         confidences = [item.get('confidence', 0.5) for item in items]
         return sum(confidences) / len(confidences)
+    
+    def _enhance_articles_with_content(self, article_dicts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Enhance article dictionaries with full content from database.
+        
+        Args:
+            article_dicts: List of article dictionaries
+            
+        Returns:
+            Enhanced article dictionaries with full_text when available
+        """
+        try:
+            # Get article links for database lookup
+            article_links = [article.get('link') for article in article_dicts if article.get('link')]
+            
+            if not article_links:
+                return article_dicts
+            
+            # Query database for articles with full content
+            # Use the database adapter from state manager
+            db_adapter = getattr(self.state_manager, 'db', None)
+            if not db_adapter:
+                logger.warning("No database adapter available for content enhancement")
+                return article_dicts
+                
+            response = db_adapter.client.table('articles').select(
+                'link, full_text'
+            ).in_('link', article_links).eq('fetch_status', 'fetched').execute()
+            
+            # Create lookup map
+            content_map = {}
+            if response.data:
+                for row in response.data:
+                    if row.get('full_text'):
+                        content_map[row['link']] = row['full_text']
+            
+            # Enhance articles with full content
+            enhanced_articles = []
+            for article in article_dicts:
+                enhanced_article = article.copy()
+                link = article.get('link')
+                if link and link in content_map:
+                    enhanced_article['full_text'] = content_map[link]
+                    logger.debug(f"Enhanced article with full content: {link}")
+                enhanced_articles.append(enhanced_article)
+            
+            content_count = len([a for a in enhanced_articles if a.get('full_text')])
+            logger.info(f"Enhanced {content_count}/{len(article_dicts)} articles with full content")
+            
+            return enhanced_articles
+            
+        except Exception as e:
+            logger.warning(f"Failed to enhance articles with content: {e}")
+            return article_dicts

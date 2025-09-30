@@ -237,6 +237,7 @@ Return ONLY valid JSON in the following structure, no additional text (values in
             source = _sanitize_content(a.get("source") or "")
             summary = _sanitize_content(a.get("summary") or "")
             link = _sanitize_content(a.get("link") or "")
+            full_text = _sanitize_content(a.get("full_text") or "")
             published = a.get("published")
             time_str = ""
             try:
@@ -244,13 +245,22 @@ Return ONLY valid JSON in the following structure, no additional text (values in
                     time_str = published.strftime("%Y-%m-%d %H:%M")
             except Exception:
                 time_str = ""
+            
+            # Build base article info
             base = f"{i}. [{source}] {title}"
             if time_str:
                 base = f"{i}. [{time_str}] [{source}] {title}"
-            if summary and len(summary) <= 200:
+            
+            # Prioritize full_text content over summary for richer LLM analysis
+            if full_text and len(full_text) > 100:
+                # Use more full text for better analysis - expand from 800 to 1200 chars
+                truncated_text = full_text[:1200] + "..." if len(full_text) > 1200 else full_text
+                base += f"\nתוכן מלא: {truncated_text}"
+            elif summary and len(summary) <= 300:  # Allow longer summaries too
                 base += f" — {summary}"
-            if link:
-                base += f" (קישור: {link})"
+            
+            # Skip adding URLs to reduce clutter and focus on content
+            
             lines.append(base)
         return "\n".join(lines)
 
