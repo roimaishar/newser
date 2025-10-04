@@ -13,9 +13,26 @@ import json
 class NotificationFormatter:
     """Formats news content for different notification channels."""
     
+    # Source icons mapping
+    SOURCE_ICONS = {
+        'ynet': '🔴',  # Red circle for Ynet
+        'walla': '🟢',  # Green circle for Walla
+        'globes': '💼',  # Briefcase for Globes (business)
+        'haaretz': '📰',  # Newspaper for Haaretz
+        'mako': '🔵',  # Blue circle for Mako
+        'channel12': '📺',  # TV for Channel 12
+        'channel13': '📺',  # TV for Channel 13
+        'default': '📌'  # Pin for unknown sources
+    }
+    
     def __init__(self):
         self.max_push_chars = 120
         self.max_slack_articles = 5
+    
+    def get_source_icon(self, source: str) -> str:
+        """Get icon for news source."""
+        source_lower = source.lower().strip()
+        return self.SOURCE_ICONS.get(source_lower, self.SOURCE_ICONS['default'])
     
     def format_push_notification(self, articles: List[Dict], hebrew_result=None, style: str = "headlines") -> str:
         """
@@ -77,24 +94,26 @@ class NotificationFormatter:
             return {
                 "text": "📰 אין חדשות חדשות בשעה האחרונה",
                 "username": "NewsBot",
-                "icon_emoji": ":newspaper:"
             }
         
         count = len(articles)
         time_str = datetime.now().strftime("%H:%M")
         
-        # Create numbered headlines list - prioritize full content over titles
+        # Create headlines list with source icons instead of numbers
         headlines = []
-        for i, article in enumerate(articles, 1):
+        for article in articles:
             title = article.get('title', '')[:80]
+            source = article.get('source', '')
             full_text = article.get('full_text', '')
+            icon = self.get_source_icon(source)
             
             # Use full text excerpt if available for richer context
             if full_text and len(full_text) > 100:
-                excerpt = full_text[:120] + "..." if len(full_text) > 120 else full_text
-                headlines.append(f"{i}️⃣ {title}\n   📄 {excerpt}")
+                # Use more full text for better analysis - expand from 800 to 1200 chars
+                truncated_text = full_text[:1200] + "..." if len(full_text) > 1200 else full_text
+                headlines.append(f"{icon} {title}\n   📄 {truncated_text}")
             else:
-                headlines.append(f"{i}️⃣ {title}")
+                headlines.append(f"{icon} {title}")
         
         headlines_text = "\n".join(headlines)
         
@@ -144,11 +163,13 @@ class NotificationFormatter:
         else:
             urgency_level = "נמוכה"
         
-        # Create numbered headlines
+        # Create headlines with source icons
         headlines = []
-        for i, article in enumerate(articles, 1):
+        for article in articles:
             title = article.get('title', '')[:70]
-            headlines.append(f"{i}️⃣ {title}")
+            source = article.get('source', '')
+            icon = self.get_source_icon(source)
+            headlines.append(f"{icon} {title}")
         
         headlines_text = "\n".join(headlines)
         
@@ -209,11 +230,13 @@ class NotificationFormatter:
         if hebrew_result and hebrew_result.key_topics:
             main_topic = hebrew_result.key_topics[0]
         
-        # Top 3 headlines
+        # Top 3 headlines with source icons
         top_headlines = []
         for article in articles[:3]:
             title = article.get('title', '')[:60]
-            top_headlines.append(f"• {title}")
+            source = article.get('source', '')
+            icon = self.get_source_icon(source)
+            top_headlines.append(f"{icon} {title}")
         
         headlines_text = "\n".join(top_headlines)
         
@@ -350,13 +373,14 @@ class NotificationFormatter:
         messages.append(main_message)
         
         
-        # Thread reply 2: Articles list
+        # Thread reply 2: Articles list with source icons
         articles_text = ""
-        for i, article in enumerate(articles[:5], 1):
+        for article in articles[:5]:
             title = article.get('title', '')[:80]
-            source = article.get('source', '').upper()
+            source = article.get('source', '')
             link = article.get('link', '')
-            articles_text += f"{i}. *{title}*\n   {link}\n\n"
+            icon = self.get_source_icon(source)
+            articles_text += f"{icon} *{title}*\n   {link}\n\n"
         
         articles_reply = {
             "text": f"📰 *רשימת כתבות*\n\n{articles_text}",

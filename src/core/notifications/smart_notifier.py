@@ -205,16 +205,45 @@ class SmartNotifier:
             logger.info("LLM decided not to send notifications")
             return False
         
+        # Calculate urgency based on content and volume
         urgency = "normal"
-        urgent_keywords = ["פיגוע", "רצח", "מלחמה", "טיל", "חירום", "דחוף"]
+        urgent_keywords = ["פיגוע", "רצח", "מלחמה", "טיל", "חירום", "דחוף", "הרוגים", "פצועים"]
         message_text = (decision.compact_push + " " + decision.full_message).lower()
+        
+        found_keywords = [kw for kw in urgent_keywords if kw in message_text]
 
-        if any(keyword in message_text for keyword in urgent_keywords):
+        if found_keywords:
             urgency = "breaking"
         elif decision.fresh_articles_count >= 3:
             urgency = "high"
-
+        
+        # Get scheduling decision
         send_now, scheduled_time = self.scheduler.get_notification_decision(urgency)
+        
+        # Log urgency analysis
+        llm_logger = self._get_llm_logger()
+        if llm_logger:
+            try:
+                reasoning = ""
+                if urgency == "breaking":
+                    reasoning = f"Breaking keywords detected: {', '.join(found_keywords)}"
+                elif urgency == "high":
+                    reasoning = f"High volume: {decision.fresh_articles_count} fresh articles"
+                else:
+                    reasoning = "Normal news flow"
+                
+                llm_logger.log_urgency_analysis(
+                    fresh_articles_count=decision.fresh_articles_count,
+                    urgency_keywords=found_keywords,
+                    calculated_urgency=urgency,
+                    is_peak_hours=self.scheduler.is_peak_hours(),
+                    is_quiet_hours=self.scheduler.is_quiet_hours(),
+                    should_send_now=send_now,
+                    scheduled_time=scheduled_time,
+                    reasoning=reasoning
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to log urgency analysis: %s", exc)
 
         if not send_now and scheduled_time:
             logger.info(

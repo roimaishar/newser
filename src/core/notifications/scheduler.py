@@ -16,13 +16,21 @@ logger = logging.getLogger(__name__)
 # Israel timezone
 ISRAEL_TZ = pytz.timezone('Asia/Jerusalem')
 
+# Peak Hours - Normal news allowed (up to 7 stories)
+PEAK_HOURS = [
+    time(8, 0),    # 08:00 - Morning peak
+    time(12, 0),   # 12:00 - Lunch peak
+    time(18, 0),   # 18:00 - Evening peak
+]
+
 # Predefined notification time slots (Israel time)
 NOTIFICATION_SLOTS = [
     time(7, 30),   # 07:30
+    time(8, 0),    # 08:00 - PEAK
     time(9, 0),    # 09:00  
-    time(12, 0),   # 12:00
+    time(12, 0),   # 12:00 - PEAK
     time(15, 0),   # 15:00
-    time(18, 0),   # 18:00
+    time(18, 0),   # 18:00 - PEAK
     time(19, 0),   # 19:00
     time(21, 0),   # 21:00
     time(23, 0),   # 23:00
@@ -31,6 +39,10 @@ NOTIFICATION_SLOTS = [
 # Hours considered "quiet" (avoid non-urgent notifications)
 QUIET_HOURS_START = time(23, 30)
 QUIET_HOURS_END = time(7, 0)
+
+# Max stories per notification
+MAX_STORIES_NORMAL = 5
+MAX_STORIES_PEAK = 7
 
 
 class NotificationScheduler:
@@ -57,6 +69,38 @@ class NotificationScheduler:
         else:  # Shouldn't happen with our times, but handle gracefully
             return QUIET_HOURS_START <= current_time <= QUIET_HOURS_END
     
+    def is_peak_hours(self, check_time: Optional[datetime] = None) -> bool:
+        """Check if current time is during peak hours (8 AM, 12 PM, 6 PM)."""
+        if check_time is None:
+            check_time = self.get_current_israel_time()
+        
+        current_time = check_time.time()
+        
+        # Check if within 30 minutes of any peak hour
+        for peak_time in PEAK_HOURS:
+            # Create time window: peak_time ± 30 minutes
+            peak_hour = peak_time.hour
+            peak_minute = peak_time.minute
+            
+            # Check if current time is within the peak window
+            if current_time.hour == peak_hour:
+                return True
+            # Also check 30 minutes before
+            elif current_time.hour == peak_hour - 1 and current_time.minute >= 30:
+                return True
+            # And 30 minutes after
+            elif current_time.hour == peak_hour + 1 and current_time.minute < 30:
+                return True
+        
+        return False
+    
+    def get_max_stories_for_time(self, check_time: Optional[datetime] = None) -> int:
+        """Get maximum stories allowed for current time."""
+        if self.is_peak_hours(check_time):
+            return MAX_STORIES_PEAK
+        else:
+            return MAX_STORIES_NORMAL
+    
     def get_next_notification_slot(self, from_time: Optional[datetime] = None) -> datetime:
         """Get the next scheduled notification slot."""
         if from_time is None:
@@ -82,23 +126,33 @@ class NotificationScheduler:
         """
         Decide if notification should be sent immediately based on urgency and time.
         
+        Rules:
+        - Breaking: Always immediate (24/7)
+        - High/Urgent: Immediate during business hours (7 AM - 11 PM)
+        - Normal: Only during peak hours (8 AM, 12 PM, 6 PM)
+        - Low: Never immediate, always scheduled
+        
         Args:
             urgency_level: "breaking", "high", "normal", "low"
         """
         current_time = self.get_current_israel_time()
         is_quiet = self.is_quiet_hours(current_time)
+        is_peak = self.is_peak_hours(current_time)
         
         if urgency_level == "breaking":
-            # Breaking news always sends immediately
+            # Breaking news always sends immediately (24/7)
             return True
         elif urgency_level == "high":
-            # High priority avoids quiet hours unless very recent
+            # High priority sends during business hours (not quiet hours)
             return not is_quiet
-        elif urgency_level in ["normal", "low"]:
-            # Normal/low priority respects scheduled slots
+        elif urgency_level == "normal":
+            # Normal priority ONLY during peak hours
+            return is_peak and not is_quiet
+        elif urgency_level == "low":
+            # Low priority never sends immediately
             return False
         else:
-            # Unknown urgency, be conservative
+            # Unknown urgency, be conservative - treat as high
             return not is_quiet
     
     def get_notification_decision(self, urgency_level: str = "normal") -> Tuple[bool, Optional[datetime]]:
@@ -153,8 +207,11 @@ class NotificationScheduler:
         return {
             "current_israel_time": current_time.isoformat(),
             "is_quiet_hours": self.is_quiet_hours(),
+            "is_peak_hours": self.is_peak_hours(),
+            "max_stories_now": self.get_max_stories_for_time(),
             "next_notification_slot": next_slot.isoformat(),
             "notification_slots_count": len(NOTIFICATION_SLOTS),
+            "peak_hours_count": len(PEAK_HOURS),
             "timezone": str(self.tz)
         }
 

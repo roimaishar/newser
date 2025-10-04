@@ -134,6 +134,44 @@ class LLMLogger:
         
         self._write_section("🔔 NOTIFICATION DECISION PROCESS", content)
     
+    def log_urgency_analysis(self,
+                           fresh_articles_count: int,
+                           urgency_keywords: List[str],
+                           calculated_urgency: str,
+                           is_peak_hours: bool,
+                           is_quiet_hours: bool,
+                           should_send_now: bool,
+                           scheduled_time: Optional[datetime] = None,
+                           reasoning: str = ""):
+        """Log urgency calculation and scheduling decision."""
+        content = f"Timestamp: {datetime.now().isoformat()}\n"
+        content += f"Articles Analyzed: {fresh_articles_count}\n\n"
+        
+        content += "URGENCY SIGNALS:\n"
+        if urgency_keywords:
+            content += f"  Content Keywords: {', '.join(urgency_keywords)}\n"
+        content += f"  Volume: {fresh_articles_count} articles\n"
+        content += f"  Time Context: Peak={is_peak_hours}, Quiet={is_quiet_hours}\n\n"
+        
+        urgency_icon = {
+            "breaking": "🚨",
+            "high": "🔥",
+            "normal": "📊",
+            "low": "📌"
+        }.get(calculated_urgency, "❓")
+        
+        content += f"CALCULATED URGENCY: {calculated_urgency.upper()} {urgency_icon}\n\n"
+        
+        content += "SCHEDULING DECISION:\n"
+        content += f"  Should Notify: {'YES' if should_send_now else 'NO (scheduled)'}\n"
+        content += f"  Send Timing: {'Immediate' if should_send_now else 'Scheduled'}\n"
+        if scheduled_time:
+            content += f"  Scheduled For: {scheduled_time.strftime('%Y-%m-%d %H:%M:%S %Z')}\n"
+        if reasoning:
+            content += f"  Reasoning: {reasoning}\n"
+        
+        self._write_section("🎯 URGENCY ANALYSIS", content)
+    
     def log_notifications_sent(self, 
                              compact_push: Optional[str] = None,
                              full_message: Optional[str] = None,
