@@ -257,9 +257,14 @@ class SmartNotifier:
             return False
 
         sent_any = False
+        slack_payload = None
+        push_payload = None
 
         if slack_client:
             try:
+                # Prepare Slack payload for logging
+                slack_payload = self._prepare_slack_payload(decision.full_message)
+                
                 if slack_client.send_direct_message(decision.full_message):
                     logger.info("Successfully sent to Slack")
                     sent_any = True
@@ -277,6 +282,10 @@ class SmartNotifier:
                         "published": datetime.now(),
                     }
                 ]
+                
+                # Prepare push payload for logging
+                push_payload = self._prepare_push_payload(decision.compact_push)
+                
                 if push_client.send_news_notification(mock_articles, None, "headlines"):
                     logger.info("Successfully sent push notification")
                     sent_any = True
@@ -297,6 +306,8 @@ class SmartNotifier:
                 llm_logger.log_notifications_sent(
                     compact_push=decision.compact_push,
                     full_message=decision.full_message,
+                    slack_payload=slack_payload,
+                    push_payload=push_payload,
                     success_status=success_status,
                 )
             except Exception as exc:  # noqa: BLE001
@@ -414,12 +425,76 @@ class SmartNotifier:
             logger.error("Smart notification process failed: %s", exc)
             return None
 
+    def _prepare_slack_payload(self, message: str) -> Dict[str, Any]:
+        """Prepare Slack payload for logging (mimics what Slack client sends)."""
+        # Check if message has structured format
+        if "**עובדות עיקריות:**" in message:
+            sections = message.split("**הקשר ומשמעות:**")
+            facts_section = sections[0].replace("📰 **עובדות עיקריות:**", "").strip()
+            context_section = sections[1].strip() if len(sections) > 1 else ""
+            
+            blocks = [
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "📰 חדשות מיידיות",
+                        "emoji": True
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*עובדות עיקריות:*\n{facts_section}"
+                    }
+                }
+            ]
+            
+            if context_section:
+                blocks.append({
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*הקשר ומשמעות:*\n{context_section}"
+                    }
+                })
+            
+            return {
+                "blocks": blocks,
+                "username": "Smart News Bot",
+                "icon_emoji": ":newspaper:"
+            }
+        else:
+            return {
+                "text": message,
+                "username": "Smart News Bot",
+                "icon_emoji": ":newspaper:",
+                "mrkdwn": True
+            }
+    
+    def _prepare_push_payload(self, message: str) -> Dict[str, Any]:
+        """Prepare push notification payload for logging."""
+        return {
+            "provider": "onesignal",  # or firebase, depending on config
+            "contents": {"he": message, "en": message},
+            "headings": {"he": "", "en": ""},
+            "priority": 5,
+            "included_segments": ["All"],
+            "android_channel_id": "news_updates",
+            "ios_category": "NEWS_CATEGORY",
+            "data": {
+                "type": "news_update",
+                "timestamp": datetime.now().isoformat()
+            }
+        }
+    
     def _get_llm_logger(self):
+        """Get LLM logger instance if available."""
         try:
-            from ..llm_logger import get_llm_logger
-
+            from core.llm_logger import get_llm_logger
             return get_llm_logger()
-        except Exception:  # noqa: BLE001
+        except ImportError:
             return None
 
 
