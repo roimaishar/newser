@@ -11,6 +11,8 @@ from .rss.ynet import YnetSource
 from .rss.walla import WallaSource
 from .rss.globes import GlobesSource
 from .rss.haaretz import HaaretzSource
+from .rss.aljazeera import AlJazeeraSource
+from .rss.bbc_arabic import BBCArabicSource
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +20,14 @@ logger = logging.getLogger(__name__)
 def register_all_sources():
     """Register all built-in news sources."""
     sources_to_register = [
+        # Hebrew sources
         (YnetSource, 'ynet'),
         (WallaSource, 'walla'),
         (GlobesSource, 'globes'),
         (HaaretzSource, 'haaretz'),
+        # Arabic sources
+        (AlJazeeraSource, 'aljazeera'),
+        (BBCArabicSource, 'bbc_arabic'),
     ]
     
     for source_class, name in sources_to_register:

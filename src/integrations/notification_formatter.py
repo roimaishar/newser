@@ -15,6 +15,7 @@ class NotificationFormatter:
     
     # Source icons mapping
     SOURCE_ICONS = {
+        # Israeli sources
         'ynet': '🔴',  # Red circle for Ynet
         'walla': '🟢',  # Green circle for Walla
         'globes': '💼',  # Briefcase for Globes (business)
@@ -22,6 +23,9 @@ class NotificationFormatter:
         'mako': '🔵',  # Blue circle for Mako
         'channel12': '📺',  # TV for Channel 12
         'channel13': '📺',  # TV for Channel 13
+        # Arabic sources
+        'aljazeera': '🇶🇦',  # Qatar flag for Al Jazeera
+        'bbc_arabic': '🌍',  # Globe for BBC Arabic (international)
         'default': '📌'  # Pin for unknown sources
     }
     

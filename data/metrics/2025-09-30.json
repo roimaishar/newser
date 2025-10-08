@@ -1,0 +1,146 @@
+{
+  "date": "2025-09-30",
+  "created": "2025-09-30T14:56:50.870908",
+  "daily_totals": {
+    "runs": 3,
+    "articles_scraped": 82,
+    "articles_after_dedup": 62,
+    "analyses_completed": 1,
+    "slack_messages_sent": 0,
+    "successful_runs": 2,
+    "failed_runs": 1,
+    "avg_runtime": 12.69318401813507,
+    "avg_fetch_time": 1.6564674377441406,
+    "avg_analysis_time": 7.537334203720093
+  },
+  "runs": [
+    {
+      "run_id": "9051e89d",
+      "timestamp": "2025-09-30T14:56:50.870831",
+      "command": "news fetch --hours 6",
+      "total_duration": 5.6480419635772705,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1759233405.2276192,
+          "end_time": 1759233406.490013,
+          "duration": 1.2623937129974365,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1759233406.490031,
+          "end_time": 1759233406.4908512,
+          "duration": 0.000820159912109375,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1759233406.490864,
+          "end_time": 1759233406.5256371,
+          "duration": 0.03477311134338379,
+          "success": true,
+          "error_message": null
+        }
+      ],
+      "articles_scraped": 27,
+      "articles_after_dedup": 21,
+      "analysis_completed": false,
+      "slack_sent": false,
+      "success": false
+    },
+    {
+      "run_id": "7b16fc10",
+      "timestamp": "2025-09-30T14:57:28.828923",
+      "command": "news fetch --hours 6",
+      "total_duration": 3.3166301250457764,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1759233445.516482,
+          "end_time": 1759233446.5329542,
+          "duration": 1.0164721012115479,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1759233446.53297,
+          "end_time": 1759233446.533659,
+          "duration": 0.0006890296936035156,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1759233446.5336661,
+          "end_time": 1759233446.568806,
+          "duration": 0.03513979911804199,
+          "success": true,
+          "error_message": null
+        }
+      ],
+      "articles_scraped": 27,
+      "articles_after_dedup": 21,
+      "analysis_completed": false,
+      "slack_sent": false,
+      "success": true
+    },
+    {
+      "run_id": "f12fc669",
+      "timestamp": "2025-09-30T15:33:39.428554",
+      "command": "news fetch --hours 6",
+      "total_duration": 20.904031991958618,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1759235598.529323,
+          "end_time": 1759235600.702825,
+          "duration": 2.173501968383789,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1759235600.702841,
+          "end_time": 1759235600.703548,
+          "duration": 0.0007069110870361328,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1759235600.7035599,
+          "end_time": 1759235600.775787,
+          "duration": 0.07222723960876465,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1759235606.1568708,
+          "end_time": 1759235613.694205,
+          "duration": 7.537334203720093,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "smart_notification",
+          "start_time": 1759235613.6942358,
+          "end_time": 1759235619.2288551,
+          "duration": 5.534619331359863,
+          "success": true,
+          "error_message": null
+        }
+      ],
+      "articles_scraped": 28,
+      "articles_after_dedup": 20,
+      "analysis_completed": true,
+      "slack_sent": false,
+      "success": true
+    }
+  ],
+  "last_updated": "2025-09-30T15:33:39.429069"
+}

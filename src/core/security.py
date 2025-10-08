@@ -27,6 +27,7 @@ class SecurityValidator:
     
     # Trusted domains for RSS feeds
     TRUSTED_DOMAINS = {
+        # Israeli sources
         'ynet.co.il',
         'www.ynet.co.il', 
         'rss.walla.co.il',
@@ -37,7 +38,13 @@ class SecurityValidator:
         'haaretz.co.il',
         'www.haaretz.co.il',
         'haaretz.com',
-        'www.haaretz.com'
+        'www.haaretz.com',
+        # Arabic sources
+        'aljazeera.net',
+        'www.aljazeera.net',
+        'bbc.com',
+        'www.bbc.com',
+        'feeds.bbci.co.uk'
     }
     
     # Patterns for detecting potentially malicious content

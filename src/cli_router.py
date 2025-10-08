@@ -50,6 +50,7 @@ class CLIRouter:
         
         # Create subparsers for each command
         self._add_news_parser(subparsers)
+        self._add_content_parser(subparsers)
         self._add_state_parser(subparsers)
         self._add_data_parser(subparsers)
         self._add_integrations_parser(subparsers)
@@ -74,7 +75,7 @@ class CLIRouter:
         # Fetch subcommand
         fetch_parser = news_subparsers.add_parser('fetch', help='Fetch and analyze news articles from RSS feeds')
         fetch_parser.add_argument('--hours', type=int, default=1, help='Hours to look back (default: 1 for GitHub Actions)')
-        fetch_parser.add_argument('--sources', nargs='+', choices=['ynet', 'walla', 'globes', 'haaretz', 'all'], default=['all'], help='News sources to fetch from (default: all)')
+        fetch_parser.add_argument('--sources', nargs='+', choices=['ynet', 'walla', 'globes', 'haaretz', 'aljazeera', 'bbc_arabic', 'all'], default=['all'], help='News sources to fetch from (default: all)')
         fetch_parser.add_argument('--similarity', type=float, default=0.8, help='Similarity threshold for deduplication (default: 0.8)')
         fetch_parser.add_argument('--no-dedupe', action='store_true', help='Skip deduplication')
         fetch_parser.add_argument('--no-analysis', action='store_true', help='Skip Hebrew AI analysis (analysis is now default)')
@@ -86,7 +87,7 @@ class CLIRouter:
         # Analyze subcommand
         analyze_parser = news_subparsers.add_parser('analyze', help='Analyze articles with Hebrew AI analysis')
         analyze_parser.add_argument('--hours', type=int, default=1, help='Hours to look back (default: 1 for GitHub Actions)')
-        analyze_parser.add_argument('--sources', nargs='+', choices=['ynet', 'walla', 'globes', 'haaretz', 'all'], default=['all'], help='News sources to fetch from (default: all)')
+        analyze_parser.add_argument('--sources', nargs='+', choices=['ynet', 'walla', 'globes', 'haaretz', 'aljazeera', 'bbc_arabic', 'all'], default=['all'], help='News sources to fetch from (default: all)')
         analyze_parser.add_argument('--similarity', type=float, default=0.8, help='Similarity threshold for deduplication (default: 0.8)')
         analyze_parser.add_argument('--no-dedupe', action='store_true', help='Skip deduplication')
         analyze_parser.add_argument('--async', dest='async_fetch', action='store_true', help='Use async RSS fetching for better performance')
@@ -98,6 +99,34 @@ class CLIRouter:
         # Summary subcommand
         summary_parser = news_subparsers.add_parser('summary', help='Show summary of recent news activity')
         summary_parser.add_argument('--days', type=int, default=3, help='Days to include in summary (default: 3)')
+    
+    def _add_content_parser(self, subparsers):
+        """Add content command parser."""
+        content_parser = subparsers.add_parser(
+            'content',
+            help='Full article content fetching and management'
+        )
+        
+        content_subparsers = content_parser.add_subparsers(
+            dest='subcommand',
+            help='Content operations',
+            metavar='{fetch,status,reset}'
+        )
+        
+        # Fetch subcommand
+        fetch_parser = content_subparsers.add_parser('fetch', help='Fetch full content for articles')
+        fetch_parser.add_argument('--max-articles', type=int, default=15, help='Maximum articles to fetch (default: 15)')
+        fetch_parser.add_argument('--reset-failed', action='store_true', help='Reset failed articles to pending')
+        fetch_parser.add_argument('--reset-hours', type=int, default=24, help='Reset failed from last N hours (default: 24)')
+        
+        # Status subcommand
+        status_parser = content_subparsers.add_parser('status', help='Show content fetching status')
+        status_parser.add_argument('--hours', type=int, default=24, help='Hours to look back (default: 24)')
+        
+        # Reset subcommand  
+        reset_parser = content_subparsers.add_parser('reset', help='Reset content fetch status')
+        reset_parser.add_argument('--hours', type=int, default=24, help='Reset articles from last N hours (default: 24)')
+        reset_parser.add_argument('--force', action='store_true', help='Skip confirmation')
     
     def _add_state_parser(self, subparsers):
         """Add state command parser."""

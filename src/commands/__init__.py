@@ -9,6 +9,7 @@ functionality is handled by dedicated command classes.
 from typing import Dict, Type
 from .base import BaseCommand
 from .news import NewsCommand
+from .content import ContentCommand
 from .state import StateCommand
 from .data import DataCommand
 from .integrations import IntegrationsCommand
@@ -17,6 +18,7 @@ from .health import HealthCommand
 # Command registry for easy extension
 COMMANDS: Dict[str, Type[BaseCommand]] = {
     'news': NewsCommand,
+    'content': ContentCommand,
     'state': StateCommand,
     'data': DataCommand,
     'integrations': IntegrationsCommand,
