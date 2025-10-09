@@ -217,6 +217,12 @@ class OpenAIClient:
     
     def _validate_and_fix_schema(self, response_data: Dict[str, Any], hours: int) -> Dict[str, Any]:
         """Validate and fix schema violations in LLM response."""
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        
+        # Get current date in Israel timezone
+        israel_tz = ZoneInfo("Asia/Jerusalem")
+        today_date = datetime.now(israel_tz).strftime("%Y-%m-%d")
         
         # Ensure time_window_hours is present
         if "time_window_hours" not in response_data:
@@ -235,13 +241,14 @@ class OpenAIClient:
             event_id = item.get("event_id", "")
             lede_he = item.get("lede_he", "")
             
-            # Event ID should start with 2025-09-28 (current date)
-            if not event_id.startswith("2025-09-28"):
-                raise ValueError(f"Item {i+1}: Invalid date in event_id '{event_id}' - must start with 2025-09-28")
+            # Event ID should start with today's date (Israel timezone)
+            if not event_id.startswith(today_date):
+                logger.warning(f"Item {i+1}: event_id '{event_id}' doesn't start with today's date {today_date}")
+                # Don't fail - just warn, as article might be from yesterday but still relevant
                 
-            # Lede should start with 2025-09-28
-            if not lede_he.startswith("2025-09-28"):
-                raise ValueError(f"Item {i+1}: Invalid date in lede_he '{lede_he}' - must start with 2025-09-28")
+            # Lede should start with a valid date (today or recent past)
+            if not lede_he[:10].replace("-", "").isdigit():
+                logger.warning(f"Item {i+1}: lede_he doesn't start with valid date: '{lede_he[:20]}...'")
         
         # Ensure bulletins_he exists
         if "bulletins_he" not in response_data:

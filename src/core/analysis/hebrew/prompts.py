@@ -9,6 +9,8 @@ and outputs clear, newspaper-quality Hebrew summaries — **only when there's ne
 
 from typing import List, Dict, Any
 import re
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # Toggle if you prefer Hebrew field names in JSON (advanced)
 USE_HEBREW_KEYS = False  # keep keys stable in English; values are always Hebrew
@@ -189,7 +191,7 @@ Now analyze the actual headlines above. Return ONLY valid JSON with REAL analysi
 Like Bob Woodward - find what has actually changed, not just what has been repeated.
 
 CRITICAL REQUIREMENTS - FAILURE TO FOLLOW WILL RESULT IN REJECTION:
-1. DATES: TODAY IS 2025-09-28. Use ONLY this date in event_id and lede_he. NEVER use 2023 dates!
+1. DATES: TODAY IS {{today_date}}. Use ONLY this date in event_id and lede_he. Use article timestamps when available, normalized to Asia/Jerusalem timezone.
 2. STATUS: MUST be English words: "new", "update", or "duplicate" - NEVER Hebrew like "חדש"
 3. DUPLICATES: If Ynet+Walla cover same story, mark first "new", second "duplicate" 
 4. ATTRIBUTION: Disputed claims need "לטענת..." + "ללא אישור עצמאי"
@@ -198,9 +200,9 @@ CRITICAL REQUIREMENTS - FAILURE TO FOLLOW WILL RESULT IN REJECTION:
 7. BULLETINS: Separate lines with \\n, not run-on sentences
 
 MANDATORY DATE FORMAT:
-- event_id: "2025-09-28_<city>_<who>_<what>"
-- lede_he: "2025-09-28, <city>: <content>"
-DO NOT USE ANY OTHER DATES!
+- event_id: "{{today_date}}_<city>_<who>_<what>" (use article date if available and within time window)
+- lede_he: "{{today_date}}, <city>: <content>" (use article date if available)
+- All dates must be in Asia/Jerusalem timezone (UTC+02/03 with DST)
 
 Advanced journalistic thinking:
 • What's really new versus what we already knew?
@@ -237,18 +239,18 @@ EXAMPLE of correct format:
     "time_window_hours": 12,
     "items": [
         {{{{
-            "event_id": "2025-09-28_תל-אביב_ראש-ממשלה_הצהרה-מדיניות",
+            "event_id": "{{today_date}}_תל-אביב_ראש-ממשלה_הצהרה-מדיניות",
             "status": "new",
-            "lede_he": "2025-09-28, תל אביב: ראש הממשלה הכריז על מדיניות חדשה בנושא הביטחון הפנימי במסיבת עיתונאים, מה שעשוי לשנות את אופן הטיפול באירועי טרור בערים מעורבות.",
+            "lede_he": "{{today_date}}, תל אביב: ראש הממשלה הכריז על מדיניות חדשה בנושא הביטחון הפנימי במסיבת עיתונאים, מה שעשוי לשנות את אופן הטיפול באירועי טרור בערים מעורבות.",
             "what_changed_he": ["הכרזה ראשונה על מדיניות ביטחון פנימי חדשה", "מסיבת עיתונאים מיוחדת בנושא", "התייחסות ספציפית לערים מעורבות"],
             "significance_he": "שינוי מדיניות עשוי להשפיע על חיי היומיום של תושבי הערים המעורבות ועל יחסי יהודים-ערבים.",
             "confidence": 0.85,
             "evidence": ["[ynet] מסיבת עיתונאים מיוחדת של ראש הממשלה — הכרזה על מדיניות ביטחון פנימי חדשה"]
         }}}},
         {{{{
-            "event_id": "2025-09-28_עזה_פלסטינים_דיווח-נפגעים",
+            "event_id": "{{today_date}}_עזה_פלסטינים_דיווח-נפגעים",
             "status": "new", 
-            "lede_he": "2025-09-28, עזה: לטענת הפלסטינים נהרגו 15 אזרחים בהפצצה, אך הדיווח לא אושר באופן עצמאי ויש לטפל בו בזהירות.",
+            "lede_he": "{{today_date}}, עזה: לטענת הפלסטינים נהרגו 15 אזרחים בהפצצה, אך הדיווח לא אושר באופן עצמאי ויש לטפל בו בזהירות.",
             "what_changed_he": ["דיווח על 15 הרוגים חדשים", "טענה לפגיעה באזרחים", "אין אישור עצמאי לדיווח"],
             "significance_he": "דיווחים על נפגעים אזרחים מעלים שאלות על פרופורציונליות ודורשים בדיקה עצמאית.",
             "confidence": 0.6,
@@ -264,7 +266,7 @@ Return ONLY valid JSON in the following structure, no additional text (values in
     "{time_window_hours}": {{hours}},
     "{items}": [
         {{{{
-            "{event_id}": "YYYY-MM-DD_<city>_<who>_<what> (use EXACT date from article)",
+            "{event_id}": "{{today_date}}_<city>_<who>_<what> (use article date if available and within window)",
             "{status}": "new/update/duplicate (ENGLISH ONLY)",
             "{lede_he}": "EXACT-DATE, <city>: <who> <what> <where>, <why it matters>",
             "{what_changed_he}": ["Specific detail 1", "Specific detail 2", "Specific detail 3"],
@@ -422,6 +424,10 @@ CRITICAL: compact_push and full_message MUST be in HEBREW ONLY. NO ARABIC CHARAC
         hours: int = 12,
     ) -> str:
         """Generate the novelty-aware update prompt (core for 'tell me only what's new')."""
+        # Get current date in Israel timezone
+        israel_tz = ZoneInfo("Asia/Jerusalem")
+        today_date = datetime.now(israel_tz).strftime("%Y-%m-%d")
+        
         articles_text = cls._format_articles_for_prompt(articles, limit=25)
         known_items_text = cls._format_known_items(known_items, limit=40)
         template = cls._get_update_template()
@@ -429,6 +435,7 @@ CRITICAL: compact_push and full_message MUST be in HEBREW ONLY. NO ARABIC CHARAC
             hours=hours,
             articles_text=articles_text,
             known_items_text=known_items_text,
+            today_date=today_date,
         )
 
     @classmethod
