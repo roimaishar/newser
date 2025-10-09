@@ -2,16 +2,16 @@
   "date": "2025-10-08",
   "created": "2025-10-08T18:12:25.793997",
   "daily_totals": {
-    "runs": 3,
-    "articles_scraped": 50,
-    "articles_after_dedup": 25,
-    "analyses_completed": 1,
+    "runs": 4,
+    "articles_scraped": 121,
+    "articles_after_dedup": 91,
+    "analyses_completed": 2,
     "slack_messages_sent": 1,
-    "successful_runs": 3,
+    "successful_runs": 4,
     "failed_runs": 0,
-    "avg_runtime": 11.01524269580841,
-    "avg_fetch_time": 0.37633073329925537,
-    "avg_analysis_time": 13.75312614440918
+    "avg_runtime": 14.701715898513793,
+    "avg_fetch_time": 0.9107754707336426,
+    "avg_analysis_time": 14.733229955037435
   },
   "runs": [
     {
@@ -116,7 +116,60 @@
       "analysis_completed": true,
       "slack_sent": true,
       "success": true
+    },
+    {
+      "run_id": "aa72f91f",
+      "timestamp": "2025-10-08T18:28:56.782792",
+      "command": "news analyze --hours 12 --slack",
+      "total_duration": 25.42715883255005,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1759937311.360023,
+          "end_time": 1759937312.9518342,
+          "duration": 1.591811180114746,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1759937312.951844,
+          "end_time": 1759937312.953221,
+          "duration": 0.001377105712890625,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1759937312.953227,
+          "end_time": 1759937313.511913,
+          "duration": 0.5586860179901123,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1759937320.963776,
+          "end_time": 1759937336.187058,
+          "duration": 15.223281860351562,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "slack_notification",
+          "start_time": 1759937336.187077,
+          "end_time": 1759937336.594502,
+          "duration": 0.4074249267578125,
+          "success": true,
+          "error_message": null
+        }
+      ],
+      "articles_scraped": 71,
+      "articles_after_dedup": 66,
+      "analysis_completed": true,
+      "slack_sent": false,
+      "success": true
     }
   ],
-  "last_updated": "2025-10-08T18:16:38.682118"
+  "last_updated": "2025-10-08T18:28:56.783238"
 }

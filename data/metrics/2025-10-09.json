@@ -1,0 +1,154 @@
+{
+  "date": "2025-10-09",
+  "created": "2025-10-09T21:37:34.449003",
+  "daily_totals": {
+    "runs": 3,
+    "articles_scraped": 140,
+    "articles_after_dedup": 140,
+    "analyses_completed": 0,
+    "slack_messages_sent": 0,
+    "successful_runs": 0,
+    "failed_runs": 3,
+    "avg_runtime": 6.4388228058815,
+    "avg_fetch_time": 0.2032882571220398,
+    "avg_analysis_time": 0.0
+  },
+  "runs": [
+    {
+      "run_id": "ce5e5368",
+      "timestamp": "2025-10-09T21:37:34.448825",
+      "command": "news analyze --hours 12 --slack",
+      "total_duration": 12.615427017211914,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1760035041.842679,
+          "end_time": 1760035042.1994188,
+          "duration": 0.35673975944519043,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1760035042.199432,
+          "end_time": 1760035042.2007942,
+          "duration": 0.0013623237609863281,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1760035042.2008,
+          "end_time": 1760035042.547192,
+          "duration": 0.3463921546936035,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1760035052.6353679,
+          "end_time": 1760035054.448791,
+          "duration": 1.8134231567382812,
+          "success": false,
+          "error_message": "LLM analysis is required but failed: Error code: 400 - {'error': {'message': \"Invalid schema for response_format 'thematic_analysis_response': In context=('properties', 'notification'), 'additionalProperties' is required to be supplied and to be false.\", 'type': 'invalid_request_error', 'param': 'response_format', 'code': None}}"
+        }
+      ],
+      "articles_scraped": 55,
+      "articles_after_dedup": 55,
+      "analysis_completed": false,
+      "slack_sent": false,
+      "success": false
+    },
+    {
+      "run_id": "a7c7a66b",
+      "timestamp": "2025-10-09T21:38:01.840213",
+      "command": "news analyze --hours 12 --slack",
+      "total_duration": 6.265486001968384,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1760035075.578279,
+          "end_time": 1760035075.8434381,
+          "duration": 0.26515913009643555,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1760035075.8434508,
+          "end_time": 1760035075.8451068,
+          "duration": 0.0016560554504394531,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1760035075.8451142,
+          "end_time": 1760035076.196448,
+          "duration": 0.3513338565826416,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1760035080.758223,
+          "end_time": 1760035081.8401961,
+          "duration": 1.0819730758666992,
+          "success": false,
+          "error_message": "LLM analysis is required but failed: Error code: 400 - {'error': {'message': \"Invalid schema for response_format 'thematic_analysis_response': In context=(), 'required' is required to be supplied and to be an array including every key in properties. Missing 'notification'.\", 'type': 'invalid_request_error', 'param': 'response_format', 'code': None}}"
+        }
+      ],
+      "articles_scraped": 55,
+      "articles_after_dedup": 55,
+      "analysis_completed": false,
+      "slack_sent": false,
+      "success": false
+    },
+    {
+      "run_id": "b6bcc4fb",
+      "timestamp": "2025-10-09T21:38:11.974749",
+      "command": "news analyze --hours 12 --slack",
+      "total_duration": 3.4371891021728516,
+      "operations": [
+        {
+          "operation": "rss_fetch",
+          "start_time": 1760035088.541046,
+          "end_time": 1760035088.636673,
+          "duration": 0.0956270694732666,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "security_validation",
+          "start_time": 1760035088.636683,
+          "end_time": 1760035088.6374688,
+          "duration": 0.00078582763671875,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "deduplication",
+          "start_time": 1760035088.637475,
+          "end_time": 1760035088.701633,
+          "duration": 0.06415796279907227,
+          "success": true,
+          "error_message": null
+        },
+        {
+          "operation": "hebrew_analysis",
+          "start_time": 1760035091.403508,
+          "end_time": 1760035091.9746869,
+          "duration": 0.5711789131164551,
+          "success": false,
+          "error_message": "LLM analysis is required but failed: Error code: 400 - {'error': {'message': \"Invalid schema for response_format 'thematic_analysis_response': In context=(), 'required' is required to be supplied and to be an array including every key in properties. Missing 'notification'.\", 'type': 'invalid_request_error', 'param': 'response_format', 'code': None}}"
+        }
+      ],
+      "articles_scraped": 30,
+      "articles_after_dedup": 30,
+      "analysis_completed": false,
+      "slack_sent": false,
+      "success": false
+    }
+  ],
+  "last_updated": "2025-10-09T21:38:11.975857"
+}

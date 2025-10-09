@@ -344,10 +344,75 @@ Return ONLY valid JSON in the following structure, no additional text (values in
     # -------- Public prompt getters --------
 
     @classmethod
-    def get_analysis_prompt(cls, articles: List[Dict[str, Any]], hours: int = 24) -> str:
+    def get_analysis_prompt(
+        cls, 
+        articles: List[Dict[str, Any]], 
+        hours: int = 24,
+        include_notification: bool = False,
+        fresh_articles: List[Dict[str, Any]] = None,
+        since_last_notification: List[Dict[str, Any]] = None,
+        previous_24_hours: List[Dict[str, Any]] = None,
+        time_since_last_notification: str = None
+    ) -> str:
+        """
+        Generate thematic analysis prompt, optionally including notification decision.
+        
+        Args:
+            articles: All articles to analyze
+            hours: Time window
+            include_notification: If True, adds notification decision section
+            fresh_articles: Recently scraped articles (for notification)
+            since_last_notification: Articles since last notification (for notification)
+            previous_24_hours: Articles from previous 24h (for notification)
+            time_since_last_notification: Time since last notification (for notification)
+        """
         articles_text = cls._format_articles_for_prompt(articles, limit=20)
         template = cls._get_analysis_template()
-        return template.format(hours=hours, articles_text=articles_text)
+        base_prompt = template.format(hours=hours, articles_text=articles_text)
+        
+        # If notification decision requested, append notification section
+        if include_notification and fresh_articles is not None:
+            fresh_text = cls._format_articles_for_prompt(fresh_articles, limit=10)
+            since_last_text = cls._format_articles_for_prompt(since_last_notification or [], limit=15)
+            previous_text = cls._format_articles_for_prompt(previous_24_hours or [], limit=20)
+            
+            notification_section = f"""
+
+=== NOTIFICATION DECISION (REQUIRED) ===
+
+In addition to the thematic analysis above, you must also decide whether to send a notification.
+
+Time since last notification: {time_since_last_notification or "Unknown"}
+
+📱 Fresh News (just scanned):
+{fresh_text or "No fresh news"}
+
+🔔 Since last notification:
+{since_last_text or "No new news since last notification"}
+
+📚 Context (last 24 hours):
+{previous_text or "No additional context"}
+
+Notification Decision Rules:
+• Alert only if there's significant new information
+• compact_push: Pack ALL key facts within 60 characters (Hebrew only, no Arabic)
+• full_message: Structure as - Facts first, then context
+• NO time stamps, NO source names in compact_push
+• Focus on essential facts: what happened
+• Prioritize: Security > Politics > Society > Economy
+
+Add a "notification" object to your JSON response with these fields:
+- should_notify_now: true/false
+- compact_push: "Essential facts in Hebrew (max 60 chars, NO ARABIC TEXT)"
+- full_message: "📰 **עובדות עיקריות:**\\n[Key facts]\\n\\n**הקשר ומשמעות:**\\n[Context]"
+- reasoning: "Why notify or skip"
+- urgency_level: "low"/"normal"/"high"/"breaking"
+
+CRITICAL: compact_push and full_message MUST be in HEBREW ONLY. NO ARABIC CHARACTERS ALLOWED."""
+            
+            base_prompt += notification_section
+        
+        return base_prompt
 
     @classmethod
     def get_update_prompt(

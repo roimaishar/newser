@@ -156,16 +156,30 @@ class OpenAIClient:
             logger.error(f"OpenAI structured API request failed: {e}")
             raise
     
-    def analyze_thematic(self, articles: List[Dict[str, str]], hours: int = 24) -> Dict[str, Any]:
+    def analyze_thematic(
+        self, 
+        articles: List[Dict[str, str]], 
+        hours: int = 24,
+        include_notification: bool = False,
+        fresh_articles: Optional[List[Dict[str, Any]]] = None,
+        since_last_notification: Optional[List[Dict[str, Any]]] = None,
+        previous_24_hours: Optional[List[Dict[str, Any]]] = None,
+        time_since_last_notification: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Perform thematic analysis using structured outputs.
+        Perform thematic analysis using structured outputs, optionally including notification decision.
         
         Args:
             articles: List of articles to analyze
             hours: Time window for context
+            include_notification: If True, includes notification decision in response
+            fresh_articles: Recently scraped articles (for notification)
+            since_last_notification: Articles since last notification (for notification)
+            previous_24_hours: Articles from previous 24h (for notification)
+            time_since_last_notification: Time since last notification (for notification)
             
         Returns:
-            Structured thematic analysis results
+            Structured thematic analysis results (with optional notification object)
         """
         if not articles:
             return {
@@ -177,15 +191,24 @@ class OpenAIClient:
             }
         
         # Generate analysis prompt using centralized prompts
-        prompt = NewsAnalysisPrompts.get_analysis_prompt(articles, hours=hours)
+        prompt = NewsAnalysisPrompts.get_analysis_prompt(
+            articles, 
+            hours=hours,
+            include_notification=include_notification,
+            fresh_articles=fresh_articles,
+            since_last_notification=since_last_notification,
+            previous_24_hours=previous_24_hours,
+            time_since_last_notification=time_since_last_notification
+        )
         
         messages = [
             {"role": "system", "content": NewsAnalysisPrompts.SYSTEM_PROMPT},
             {"role": "user", "content": prompt}
         ]
         
-        # Get schema and make structured request
-        schema = get_schema_by_type("thematic")
+        # Get schema based on whether notification is included
+        schema_type = "thematic_with_notification" if include_notification else "thematic"
+        schema = get_schema_by_type(schema_type)
         response = self._make_structured_request(messages, schema, "thematic_analysis")
         
         # Parse JSON response (guaranteed to be valid due to structured output)
@@ -275,6 +298,9 @@ class OpenAIClient:
         """
         Analyze whether to send notifications using structured outputs.
         
+        This is now a wrapper around analyze_thematic() with notification enabled.
+        Maintained for backward compatibility.
+        
         Args:
             fresh_articles: Recently scraped articles
             since_last: Articles since last notification
@@ -282,23 +308,35 @@ class OpenAIClient:
             time_since_last: Time since last notification
             
         Returns:
-            Structured notification decision
+            Structured notification decision (extracted from thematic analysis)
         """
-        from core.analysis.hebrew.prompts import get_notification_prompt
-        prompt = get_notification_prompt(fresh_articles, since_last, previous_24h, time_since_last)
+        # Combine all articles for thematic analysis
+        all_articles = fresh_articles + since_last + previous_24h
         
-        messages = [
-            {"role": "system", "content": "אתה עורך חדשות מקצועי שמחליט על התראות חכמות."},
-            {"role": "user", "content": prompt}
-        ]
+        # Call analyze_thematic with notification enabled
+        result = self.analyze_thematic(
+            articles=all_articles,
+            hours=24,
+            include_notification=True,
+            fresh_articles=fresh_articles,
+            since_last_notification=since_last,
+            previous_24_hours=previous_24h,
+            time_since_last_notification=time_since_last
+        )
         
-        # Get schema and make structured request
-        schema = get_schema_by_type("notification")
-        response = self._make_structured_request(messages, schema, "notification_decision")
-        
-        # Parse JSON response (guaranteed to be valid due to structured output)
-        content = response['choices'][0]['message']['content']
-        return json.loads(content)
+        # Extract notification object from result
+        if "notification" in result:
+            return result["notification"]
+        else:
+            # Fallback if notification not present (shouldn't happen with include_notification=True)
+            logger.warning("Notification object not found in thematic analysis result")
+            return {
+                "should_notify_now": False,
+                "compact_push": "שגיאה בניתוח",
+                "full_message": "לא ניתן לקבוע החלטת התראה",
+                "reasoning": "Notification object missing from LLM response",
+                "urgency_level": "low"
+            }
     
     def analyze_headlines(self, articles: List[Dict[str, str]]) -> NewsAnalysis:
         """

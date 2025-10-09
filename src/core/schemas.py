@@ -38,6 +38,65 @@ THEMATIC_ANALYSIS_SCHEMA = {
     "additionalProperties": False
 }
 
+# Schema for thematic analysis WITH notification decision
+THEMATIC_WITH_NOTIFICATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "mobile_headline": {
+            "type": "string",
+            "description": "כותרת מותאמת לנייד (עד 60 תווים)"
+        },
+        "story_behind_story": {
+            "type": "string", 
+            "description": "הסיפור מאחורי הסיפור - הקשר עמוק"
+        },
+        "connection_threads": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "חוטים מקשרים בין הסיפורים"
+        },
+        "reader_impact": {
+            "type": "string",
+            "description": "השפעה על הקורא הישראלי"
+        },
+        "trend_signal": {
+            "type": "string",
+            "description": "אות מגמה עתידית"
+        },
+        "notification": {
+            "type": "object",
+            "description": "החלטת התראה",
+            "properties": {
+                "should_notify_now": {
+                    "type": "boolean",
+                    "description": "האם לשלוח התראה כעת"
+                },
+                "compact_push": {
+                    "type": "string",
+                    "description": "הודעת פוש קצרה (עד 60 תווים) - בעברית בלבד"
+                },
+                "full_message": {
+                    "type": "string",
+                    "description": "הודעה מלאה לסלאק - בעברית בלבד"
+                },
+                "reasoning": {
+                    "type": "string",
+                    "description": "נימוק להחלטה"
+                },
+                "urgency_level": {
+                    "type": "string",
+                    "enum": ["low", "normal", "high", "breaking"],
+                    "description": "רמת דחיפות"
+                }
+            },
+            "required": ["should_notify_now", "compact_push", "full_message", "reasoning", "urgency_level"],
+            "additionalProperties": False
+        }
+    },
+    "required": ["mobile_headline", "story_behind_story", "connection_threads", "reader_impact", "trend_signal", "notification"],
+    "additionalProperties": False
+}
+
 # Schema for novelty detection analysis (updates vs known events)
 NOVELTY_ANALYSIS_SCHEMA = {
     "type": "object",
@@ -133,7 +192,7 @@ def get_schema_by_type(analysis_type: str) -> Dict[str, Any]:
     Get JSON schema by analysis type.
     
     Args:
-        analysis_type: Type of analysis ("thematic", "novelty", "notification")
+        analysis_type: Type of analysis ("thematic", "thematic_with_notification", "novelty", "notification")
         
     Returns:
         JSON schema dictionary
@@ -143,6 +202,7 @@ def get_schema_by_type(analysis_type: str) -> Dict[str, Any]:
     """
     schemas = {
         "thematic": THEMATIC_ANALYSIS_SCHEMA,
+        "thematic_with_notification": THEMATIC_WITH_NOTIFICATION_SCHEMA,
         "novelty": NOVELTY_ANALYSIS_SCHEMA,
         "updates": NOVELTY_ANALYSIS_SCHEMA,  # Alias for novelty
         "notification": NOTIFICATION_DECISION_SCHEMA
