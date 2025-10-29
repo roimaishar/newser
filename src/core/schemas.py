@@ -77,7 +77,7 @@ THEMATIC_WITH_NOTIFICATION_SCHEMA = {
                 },
                 "full_message": {
                     "type": "string",
-                    "description": "הודעה מלאה לסלאק - בעברית בלבד"
+                    "description": "הודעה מלאה לסלאק - רשימת עובדות בלבד בעברית"
                 },
                 "reasoning": {
                     "type": "string",
@@ -151,9 +151,38 @@ NOVELTY_ANALYSIS_SCHEMA = {
         "bulletins_he": {
             "type": "string",
             "description": "עדכונים מרוכזים בעברית"
+        },
+        "notification": {
+            "type": "object",
+            "description": "החלטת התראה (אופציונלי)",
+            "properties": {
+                "should_notify_now": {
+                    "type": "boolean",
+                    "description": "האם לשלוח התראה כעת"
+                },
+                "compact_push": {
+                    "type": "string",
+                    "description": "הודעת פוש קצרה (עד 60 תווים) - בעברית בלבד"
+                },
+                "full_message": {
+                    "type": "string",
+                    "description": "הודעה מלאה לסלאק - רשימת עובדות בלבד בעברית"
+                },
+                "reasoning": {
+                    "type": "string",
+                    "description": "נימוק להחלטה"
+                },
+                "urgency_level": {
+                    "type": "string",
+                    "enum": ["low", "normal", "high", "breaking"],
+                    "description": "רמת דחיפות"
+                }
+            },
+            "required": ["should_notify_now", "compact_push", "full_message", "reasoning", "urgency_level"],
+            "additionalProperties": False
         }
     },
-    "required": ["has_new", "items", "bulletins_he"],
+    "required": ["has_new", "items", "bulletins_he", "notification"],
     "additionalProperties": False
 }
 
@@ -171,7 +200,7 @@ NOTIFICATION_DECISION_SCHEMA = {
         },
         "full_message": {
             "type": "string",
-            "description": "הודעה מלאה לסלאק"
+            "description": "הודעה מלאה לסלאק - רשימת עובדות בלבד בעברית"
         },
         "reasoning": {
             "type": "string",

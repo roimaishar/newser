@@ -427,51 +427,12 @@ class SmartNotifier:
 
     def _prepare_slack_payload(self, message: str) -> Dict[str, Any]:
         """Prepare Slack payload for logging (mimics what Slack client sends)."""
-        # Check if message has structured format
-        if "**עובדות עיקריות:**" in message:
-            sections = message.split("**הקשר ומשמעות:**")
-            facts_section = sections[0].replace("📰 **עובדות עיקריות:**", "").strip()
-            context_section = sections[1].strip() if len(sections) > 1 else ""
-            
-            blocks = [
-                {
-                    "type": "header",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "📰 חדשות מיידיות",
-                        "emoji": True
-                    }
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"*עובדות עיקריות:*\n{facts_section}"
-                    }
-                }
-            ]
-            
-            if context_section:
-                blocks.append({
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"*הקשר ומשמעות:*\n{context_section}"
-                    }
-                })
-            
-            return {
-                "blocks": blocks,
-                "username": "Smart News Bot",
-                "icon_emoji": ":newspaper:"
-            }
-        else:
-            return {
-                "text": message,
-                "username": "Smart News Bot",
-                "icon_emoji": ":newspaper:",
-                "mrkdwn": True
-            }
+        return {
+            "text": message,
+            "username": "Smart News Bot",
+            "icon_emoji": ":newspaper:",
+            "mrkdwn": True
+        }
     
     def _prepare_push_payload(self, message: str) -> Dict[str, Any]:
         """Prepare push notification payload for logging."""
